@@ -82,6 +82,20 @@ export const renderFormField = (
       return <ProFormTextArea key={fieldName} {...commonProps} />;
 
     case 'IntegerField':
+      if (fieldConfig.choices && fieldConfig.choices.length > 0) {
+        return (
+          <ProFormSelect
+            key={fieldName}
+            {...commonProps}
+            options={fieldConfig.choices.map(
+              ([value, label]: [number, string]) => ({
+                label,
+                value,
+              }),
+            )}
+          />
+        );
+      }
       return (
         <ProFormDigit
           key={fieldName}

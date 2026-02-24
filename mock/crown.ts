@@ -2583,6 +2583,19 @@ export default {
               default: null,
               name: 'Updated At',
             },
+            level_type: {
+              field_type: 'IntegerField' as const,
+              readonly: false,
+              show: true,
+              blank: false,
+              choices: [
+                [1, 'One'],
+                [2, 'Two'],
+              ],
+              help_text: '',
+              default: null,
+              name: 'Level',
+            },
           },
           actions: {
             // 批量操作

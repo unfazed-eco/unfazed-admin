@@ -165,15 +165,26 @@ export const useColumnGenerator = ({
 
         case 'IntegerField':
         case 'FloatField':
-          if (isInListRangeSearch) {
+          if (fieldConfig.choices && fieldConfig.choices.length > 0) {
+            column.valueType = 'select';
+            column.valueEnum = fieldConfig.choices.reduce(
+              (acc: any, [value, label]: [number, string]) => {
+                acc[value] = { text: label };
+                return acc;
+              },
+              {},
+            );
+            column.render = renderChoiceField(fieldName, fieldConfig.choices);
+          } else if (isInListRangeSearch) {
             column.valueType = 'digitRange';
             column.search = {
               transform: (value: any) => ({ [fieldName]: value }),
             };
+            column.render = renderNumberField(fieldName);
           } else {
             column.valueType = 'digit';
+            column.render = renderNumberField(fieldName);
           }
-          column.render = renderNumberField(fieldName);
           break;
 
         case 'CharField':
