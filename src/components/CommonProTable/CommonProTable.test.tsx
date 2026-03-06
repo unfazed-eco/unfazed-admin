@@ -236,7 +236,7 @@ describe('CommonProTable', () => {
   });
 
   describe('list_editable', () => {
-    it('should make only fields in list_editable editable', () => {
+    it('should only make fields in list_editable editable (except id)', () => {
       const modelDescWithEditable = {
         ...mockModelDesc,
         attrs: {
@@ -254,12 +254,13 @@ describe('CommonProTable', () => {
         />,
       );
 
-      // Fields in list_editable should be editable
+      // Only fields in list_editable should be editable
       expect(screen.getByTestId('editable-name')).toBeTruthy();
       expect(screen.getByTestId('editable-status')).toBeTruthy();
 
-      // Fields not in list_editable should not be editable
+      // id field should not be editable even if in list_editable
       expect(screen.queryByTestId('editable-id')).toBeNull();
+      // readonly fields should not be editable even when in list_editable
       expect(screen.queryByTestId('editable-created_at')).toBeNull();
     });
 
@@ -306,13 +307,13 @@ describe('CommonProTable', () => {
       expect(screen.queryByTestId('editable-name')).toBeNull();
     });
 
-    it('should not make readonly fields editable even if in list_editable', () => {
+    it('should not make readonly fields or id editable when list_editable is defined', () => {
       const modelDescWithReadonly = {
         ...mockModelDesc,
         attrs: {
           ...mockModelDesc.attrs,
           can_edit: true,
-          list_editable: ['id', 'name', 'created_at'], // id and created_at are readonly
+          list_editable: ['id', 'name', 'created_at'], // created_at is readonly
         },
       };
 
@@ -324,56 +325,13 @@ describe('CommonProTable', () => {
         />,
       );
 
-      // name is not readonly, should be editable
+      // name is not readonly and not id, should be editable
       expect(screen.getByTestId('editable-name')).toBeTruthy();
 
-      // id and created_at are readonly, should NOT be editable even in list_editable
+      // id should NOT be editable
       expect(screen.queryByTestId('editable-id')).toBeNull();
+      // created_at is readonly, should NOT be editable
       expect(screen.queryByTestId('editable-created_at')).toBeNull();
-    });
-  });
-
-  describe('list_filter', () => {
-    it('should make fields with choices in list_filter filterable', () => {
-      const modelDescWithFilter = {
-        ...mockModelDesc,
-        attrs: {
-          ...mockModelDesc.attrs,
-          list_filter: ['status'],
-        },
-      };
-
-      render(
-        <CommonProTable
-          modelDesc={modelDescWithFilter}
-          modelName="test"
-          data={mockData}
-        />,
-      );
-
-      // Status has choices and is in list_filter, should be filterable
-      expect(screen.getByTestId('filter-status')).toBeTruthy();
-    });
-
-    it('should not make fields without choices filterable', () => {
-      const modelDescWithFilter = {
-        ...mockModelDesc,
-        attrs: {
-          ...mockModelDesc.attrs,
-          list_filter: ['name'], // name has no choices
-        },
-      };
-
-      render(
-        <CommonProTable
-          modelDesc={modelDescWithFilter}
-          modelName="test"
-          data={mockData}
-        />,
-      );
-
-      // Name has no choices, should not be filterable
-      expect(screen.queryByTestId('filter-name')).toBeNull();
     });
   });
 

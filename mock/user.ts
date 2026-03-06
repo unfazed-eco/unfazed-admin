@@ -18,7 +18,7 @@ const { ANT_DESIGN_PRO_ONLY_DO_NOT_USE_IN_YOUR_PRODUCTION } = process.env;
 let access =
   ANT_DESIGN_PRO_ONLY_DO_NOT_USE_IN_YOUR_PRODUCTION === 'site' ? 'admin' : '';
 
-const getAccess = () => {
+const _getAccess = () => {
   return access;
 };
 
@@ -49,28 +49,25 @@ export default {
           data: {
             account: `${platform}_user`,
             email: `${platform}_user@example.com`,
-            roles: [
-              { id: 1, name: 'admin' }
-            ],
-            groups: [
-              { id: 1, name: 'oauth_users' }
-            ],
+            roles: [{ id: 1, name: 'admin' }],
+            groups: [{ id: 1, name: 'oauth_users' }],
             extra: {
               username: `${platform}_user`,
               nickname: `${platform.charAt(0).toUpperCase() + platform.slice(1)} User`,
-              avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
+              avatar:
+                'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
               platform: platform,
               oauth_data: extra, // 保存所有OAuth相关数据
-              ...extra
-            }
-          }
+              ...extra,
+            },
+          },
         });
         return;
       } else {
         res.send({
           code: 1,
           message: 'Invalid OAuth credentials',
-          data: null
+          data: null,
         });
         return;
       }
@@ -85,20 +82,17 @@ export default {
         data: {
           account: 'admin',
           email: 'admin@example.com',
-          roles: [
-            { id: 1, name: 'admin' }
-          ],
-          groups: [
-            { id: 1, name: 'administrators' }
-          ],
+          roles: [{ id: 1, name: 'admin' }],
+          groups: [{ id: 1, name: 'administrators' }],
           extra: {
             username: 'admin',
             nickname: 'Administrator',
-            avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
+            avatar:
+              'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
             platform: platform,
-            ...extra
-          }
-        }
+            ...extra,
+          },
+        },
       });
       return;
     }
@@ -111,20 +105,17 @@ export default {
         data: {
           account: 'user',
           email: 'user@example.com',
-          roles: [
-            { id: 2, name: 'user' }
-          ],
-          groups: [
-            { id: 2, name: 'users' }
-          ],
+          roles: [{ id: 2, name: 'user' }],
+          groups: [{ id: 2, name: 'users' }],
           extra: {
             username: 'user',
             nickname: 'User',
-            avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
+            avatar:
+              'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
             platform: platform,
-            ...extra
-          }
-        }
+            ...extra,
+          },
+        },
       });
       return;
     }
@@ -132,7 +123,7 @@ export default {
     res.send({
       code: 1,
       message: 'Invalid account or password',
-      data: null
+      data: null,
     });
   },
 
@@ -142,7 +133,7 @@ export default {
     res.send({
       code: 0,
       message: 'success',
-      data: {}
+      data: {},
     });
   },
 
@@ -156,7 +147,7 @@ export default {
       res.send({
         code: 1,
         message: 'Account and password are required',
-        data: null
+        data: null,
       });
       return;
     }
@@ -165,7 +156,7 @@ export default {
       res.send({
         code: 1,
         message: 'Account already exists',
-        data: null
+        data: null,
       });
       return;
     }
@@ -176,8 +167,8 @@ export default {
       data: {
         account,
         platform,
-        extra
-      }
+        extra,
+      },
     });
   },
 
@@ -198,7 +189,7 @@ export default {
         iconfontUrl: '',
         colorWeak: false,
         logo: '/logo.svg',
-        showWatermark: false,  // 水印开关控制
+        showWatermark: false, // 水印开关控制
         defaultLoginType: true,
         pageSize: 20,
         timeZone: 'Asia/Shanghai',
@@ -209,15 +200,17 @@ export default {
         authPlugins: [
           // 取消注释以下行来测试OAuth登录功能
           {
-            icon_url: 'https://developers.google.com/identity/images/g-logo.png',
-            platform: 'google'
+            icon_url:
+              'https://developers.google.com/identity/images/g-logo.png',
+            platform: 'google',
           },
           {
-            icon_url: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
-            platform: 'github'
-          }
-        ]
-      }
+            icon_url:
+              'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+            platform: 'github',
+          },
+        ],
+      },
     });
   },
 
@@ -229,7 +222,7 @@ export default {
       res.send({
         code: 1,
         message: 'Platform parameter is required',
-        data: null
+        data: null,
       });
       return;
     }
@@ -237,8 +230,12 @@ export default {
     // 生成模拟的第三方OAuth授权页面URL
     // 实际环境中，这应该是真实的第三方OAuth URL (如Google、GitHub等)
     const mockOAuthUrl = `https://mock-oauth-${platform}.com/authorize`;
-    const redirectUri = encodeURIComponent(`${req.get('Origin') || 'http://localhost:8000'}/oauth/login`);
-    const state = encodeURIComponent(JSON.stringify({ platform, timestamp: Date.now() }));
+    const redirectUri = encodeURIComponent(
+      `${req.get('Origin') || 'http://localhost:8000'}/oauth/login`,
+    );
+    const state = encodeURIComponent(
+      JSON.stringify({ platform, timestamp: Date.now() }),
+    );
 
     // 构造第三方OAuth授权URL，包含回调地址
     const fullOAuthUrl = `${mockOAuthUrl}?client_id=mock_client_id&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=read:user`;
@@ -247,8 +244,8 @@ export default {
       code: 0,
       message: 'success',
       data: {
-        redirect_url: fullOAuthUrl
-      }
+        redirect_url: fullOAuthUrl,
+      },
     });
   },
 
@@ -268,7 +265,7 @@ export default {
       // 重定向回OAuth回调页面，携带第三方平台信息
       const redirectUrl = `/oauth/login?code=${authCode}&token=${userToken}&access_token=${accessToken}&platform=${platform}&state=${state}&scope=read:user`;
       res.redirect(302, redirectUrl);
-    } catch (error) {
+    } catch (_error) {
       res.redirect(302, '/oauth/login?error=invalid_state');
     }
   },
@@ -281,7 +278,9 @@ export default {
     const authCode = `mock_auth_code_${platform}_${Date.now()}`;
     const userToken = `mock_user_token_${platform}_${Date.now()}`;
     const accessToken = `mock_access_token_${platform}_${Date.now()}`;
-    const state = encodeURIComponent(JSON.stringify({ platform, timestamp: Date.now() }));
+    const state = encodeURIComponent(
+      JSON.stringify({ platform, timestamp: Date.now() }),
+    );
 
     const redirectUrl = `/oauth/login?code=${authCode}&token=${userToken}&access_token=${accessToken}&platform=${platform}&state=${state}&scope=read:user`;
     res.redirect(302, redirectUrl);
@@ -294,8 +293,8 @@ export default {
       message: 'success',
       data: [
         {
-          name: 'crown',  // 模型名称，用于 model-desc/model-data API
-          label: 'Crown Management',  // 显示名称，用于侧边栏
+          name: 'crown', // 模型名称，用于 model-desc/model-data API
+          label: 'Crown Management', // 显示名称，用于侧边栏
           path: '/crown',
           component: 'ModelAdmin',
           icon: 'CrownOutlined',
@@ -303,15 +302,15 @@ export default {
           hideChildrenInMenu: false,
         },
         {
-          name: 'tools',  // 工具名称，用于 model-desc API
-          label: 'Custom Tools',  // 显示名称，用于侧边栏
+          name: 'tools', // 工具名称，用于 model-desc API
+          label: 'Custom Tools', // 显示名称，用于侧边栏
           path: '/tools',
           component: 'ModelCustom',
           icon: 'ToolOutlined',
           hideInMenu: false,
           hideChildrenInMenu: false,
-        }
-      ]
+        },
+      ],
     });
   },
 };

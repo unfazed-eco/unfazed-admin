@@ -3,7 +3,7 @@
 exports[`Login Page should show login form 1`] = `
 <DocumentFragment>
   <div
-    class="ant-app css-var-«r0»"
+    class="ant-app css-var-_r_0_"
   >
     <div
       class="acss-trkbkn"
@@ -77,14 +77,14 @@ exports[`Login Page should show login form 1`] = `
           >
             <form
               autocomplete="off"
-              class="ant-form ant-form-vertical css-var-«r0» ant-form-css-var ant-pro-form"
+              class="ant-form ant-form-vertical css-var-_r_0_ ant-form-css-var ant-pro-form"
             >
               <input
                 style="display: none;"
                 type="text"
               />
               <div
-                class="ant-tabs ant-tabs-top ant-tabs-centered css-var-«r0» ant-tabs-css-var"
+                class="ant-tabs ant-tabs-top ant-tabs-centered css-var-_r_0_ ant-tabs-css-var"
               >
                 <div
                   aria-orientation="horizontal"
@@ -178,7 +178,7 @@ exports[`Login Page should show login form 1`] = `
         </div>
       </div>
       <footer
-        class="ant-layout-footer css-var-«r0»"
+        class="ant-layout-footer css-var-_r_0_"
         style="padding: 0px; background: none;"
       >
         <div

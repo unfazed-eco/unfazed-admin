@@ -1,27 +1,35 @@
+/**
+ * ModelCustom Component
+ *
+ * A component for rendering custom tool forms with dynamic fields and actions.
+ *
+ * Usage:
+ * ```tsx
+ * import { ModelCustom } from '@/components';
+ *
+ * <ModelCustom toolName="myTool" onBack={handleBack} />
+ * ```
+ */
+
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { PageContainer, ProForm } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
-import { Button, Card, Divider, Modal, message, Space, Spin } from 'antd';
-import React, { useCallback, useRef, useState } from 'react';
-import { executeModelAction, getModelDesc } from '@/services/api';
+import { Button, Card, Divider, message, Space, Spin } from 'antd';
+import React, { useRef, useState } from 'react';
+import { getModelDesc } from '@/services/api';
 import { renderFormField } from '@/utils/formFieldRenderer';
-
-interface ModelCustomProps {
-  toolName: string;
-  onBack?: () => void;
-}
+import ActionButtons from './ActionButtons';
+import type { ModelCustomProps } from './types';
+import { useActionExecutor } from './useActionExecutor';
 
 const ModelCustom: React.FC<ModelCustomProps> = ({ toolName, onBack }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const formRef = useRef<ProFormInstance>(null!);
-  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>(
-    {},
-  );
   const [toolDesc, setToolDesc] = useState<API.AdminToolSerializeModel | null>(
     null,
   );
 
-  // 懒加载 model-desc
+  // Lazy load model-desc
   const { loading: descLoading } = useRequest(
     async () => {
       const response = await getModelDesc(toolName);
@@ -34,222 +42,19 @@ const ModelCustom: React.FC<ModelCustomProps> = ({ toolName, onBack }) => {
     },
     {
       manual: false,
-      refreshDeps: [toolName], // 当 toolName 变化时重新请求
+      refreshDeps: [toolName],
     },
   );
 
-  // Build search conditions from current form values
-  const buildSearchConditions = (values: Record<string, any>, desc?: any) => {
-    if (!desc?.fields) return [];
-    const conditions: any[] = [];
-    Object.entries(values || {}).forEach(([field, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      const fieldConfig = desc.fields[field];
-      if (!fieldConfig) return;
+  // Action executor hook
+  const { actionLoading, executeAction } = useActionExecutor({
+    toolName,
+    toolDesc,
+    formRef,
+    messageApi,
+  });
 
-      const cond: any = { field };
-
-      switch (fieldConfig.field_type) {
-        case 'CharField':
-        case 'TextField':
-          if (fieldConfig.choices && fieldConfig.choices.length > 0) {
-            cond.eq = String(value);
-          } else {
-            cond.icontains = String(value);
-          }
-          break;
-        case 'IntegerField':
-        case 'FloatField':
-          cond.eq = Number(value);
-          break;
-        case 'BooleanField':
-          cond.eq = value ? 1 : 0;
-          break;
-        case 'DateField':
-        case 'DatetimeField':
-          if (Array.isArray(value) && value.length === 2) {
-            // range
-            const [start, end] = value;
-            if (start && end) {
-              conditions.push(
-                {
-                  field,
-                  gte: (start as any)?.format?.('YYYY-MM-DD') || String(start),
-                } as any,
-                {
-                  field,
-                  lte: (end as any)?.format?.('YYYY-MM-DD') || String(end),
-                } as any,
-              );
-            }
-            return;
-          } else if ((value as any)?.format) {
-            cond.eq = (value as any).format(
-              fieldConfig.field_type === 'DateField'
-                ? 'YYYY-MM-DD'
-                : 'YYYY-MM-DD HH:mm:ss',
-            ) as any;
-          }
-          break;
-        default:
-          if (typeof value === 'string' || typeof value === 'number') {
-            cond.eq = value;
-          }
-      }
-
-      if (
-        cond.eq !== undefined ||
-        cond.lt !== undefined ||
-        cond.lte !== undefined ||
-        cond.gt !== undefined ||
-        cond.gte !== undefined ||
-        cond.contains !== undefined ||
-        cond.icontains !== undefined
-      ) {
-        conditions.push(cond);
-      }
-    });
-    return conditions;
-  };
-
-  // 执行 Action
-  const executeAction = useCallback(
-    async (actionKey: string, actionConfig: any, formData: any) => {
-      if (!toolDesc) return;
-
-      setActionLoading((prev) => ({ ...prev, [actionKey]: true }));
-
-      try {
-        // use provided formData if present, otherwise read current form values
-        const rawValues =
-          formData && Object.keys(formData).length > 0
-            ? formData
-            : formRef.current?.getFieldsValue?.() || {};
-
-        const searchConditions = buildSearchConditions(rawValues, toolDesc);
-        const formPayload =
-          actionConfig.input === 'empty' ? {} : formData || {};
-
-        const response = await executeModelAction({
-          name: toolName,
-          action: actionKey,
-          form_data: formPayload,
-          search_condition: searchConditions,
-        });
-
-        if (response?.code === 0) {
-          switch (actionConfig.output) {
-            case 'toast':
-              messageApi.success(
-                response.message || 'Action completed successfully',
-              );
-              break;
-
-            case 'display': {
-              // 显示数据弹窗
-              const displayData = response.data;
-
-              Modal.info({
-                title: actionConfig.label || actionConfig.name,
-                width: Math.min(800, window.innerWidth * 0.8),
-                content: (
-                  <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                    <pre
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {typeof displayData === 'object'
-                        ? JSON.stringify(displayData, null, 2)
-                        : String(displayData)}
-                    </pre>
-                  </div>
-                ),
-              });
-              break;
-            }
-
-            case 'download':
-              // 处理文件下载
-              if (response.data && typeof response.data === 'string') {
-                const blob = new Blob([response.data], { type: 'text/plain' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${actionConfig.name}_${Date.now()}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-              }
-              messageApi.success('File downloaded successfully');
-              break;
-
-            case 'refresh':
-              messageApi.success(
-                response.message || 'Action completed successfully',
-              );
-              // 可以在这里添加页面刷新逻辑
-              break;
-
-            default:
-              messageApi.success(
-                response.message || 'Action completed successfully',
-              );
-          }
-        } else {
-          messageApi.error(response?.message || 'Action failed');
-        }
-      } catch (error) {
-        messageApi.error('Action failed');
-        console.error('Action error:', error);
-      } finally {
-        setActionLoading((prev) => ({ ...prev, [actionKey]: false }));
-      }
-    },
-    [toolName, toolDesc, messageApi],
-  );
-
-  // 渲染操作按钮
-  const renderActionButtons = useCallback(() => {
-    if (!toolDesc) return [];
-
-    const buttons: React.ReactNode[] = [];
-
-    Object.entries(toolDesc.actions || {}).forEach(
-      ([actionKey, actionConfig]: [string, any]) => {
-        buttons.push(
-          <Button
-            key={actionKey}
-            type={actionKey === 'submit' ? 'primary' : 'default'}
-            loading={actionLoading[actionKey]}
-            onClick={async () => {
-              // 根据 action input 类型处理
-              if (actionConfig.input === 'empty') {
-                // 不需要表单数据
-                await executeAction(actionKey, actionConfig, {});
-              } else {
-                // 需要表单数据
-                try {
-                  const formData = await formRef.current?.validateFields();
-                  await executeAction(actionKey, actionConfig, formData);
-                } catch (_error) {
-                  messageApi.warning('Please fill in all required fields');
-                }
-              }
-            }}
-          >
-            {actionConfig.label || actionConfig.name}
-          </Button>,
-        );
-      },
-    );
-
-    return buttons;
-  }, [toolDesc?.actions, actionLoading, executeAction, messageApi]);
-
-  // 如果正在加载或没有数据，显示加载状态
+  // Loading state
   if (descLoading || !toolDesc) {
     return (
       <PageContainer
@@ -301,13 +106,13 @@ const ModelCustom: React.FC<ModelCustomProps> = ({ toolName, onBack }) => {
           layout="horizontal"
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 18 }}
-          submitter={false} // 禁用默认提交按钮
+          submitter={false}
         >
           <Divider orientation="left">
             {toolDesc.attrs.help_text || 'Custom Tool'}
           </Divider>
 
-          {/* 渲染字段 */}
+          {/* Render fields */}
           {Object.entries(toolDesc.fields || {}).map(
             ([fieldName, fieldConfig]: [string, any]) => {
               if (!fieldConfig.show) return null;
@@ -329,10 +134,18 @@ const ModelCustom: React.FC<ModelCustomProps> = ({ toolName, onBack }) => {
             },
           )}
 
-          {/* 渲染操作按钮 */}
+          {/* Render action buttons */}
           <Divider />
           <div style={{ textAlign: 'center' }}>
-            <Space size="middle">{renderActionButtons()}</Space>
+            <Space size="middle">
+              <ActionButtons
+                toolDesc={toolDesc}
+                actionLoading={actionLoading}
+                formRef={formRef}
+                messageApi={messageApi}
+                executeAction={executeAction}
+              />
+            </Space>
           </div>
         </ProForm>
       </Card>
@@ -341,3 +154,6 @@ const ModelCustom: React.FC<ModelCustomProps> = ({ toolName, onBack }) => {
 };
 
 export default ModelCustom;
+
+// Re-export types
+export type { ModelCustomProps } from './types';

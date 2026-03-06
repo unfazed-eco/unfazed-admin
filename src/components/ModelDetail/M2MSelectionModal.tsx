@@ -6,11 +6,15 @@ import { getModelData } from '@/services/api';
 interface M2MSelectionModalProps {
   visible: boolean;
   onCancel: () => void;
-  onOk: (selectedIds: React.Key[]) => void;
+  onOk: (
+    selectedIds: React.Key[],
+    selectedRecords: any[],
+    initialSelectedIds: React.Key[],
+  ) => void;
   title: string;
   modelDesc: any;
-  data: any[];
-  selectedIds: React.Key[];
+  relation: any;
+  mainRecordId: any;
 }
 
 const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
@@ -19,30 +23,76 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
   onOk,
   title,
   modelDesc,
-  data,
-  selectedIds: initialSelectedIds,
+  relation,
+  mainRecordId,
 }) => {
-  const [selectedRowKeys, setSelectedRowKeys] =
-    useState<React.Key[]>(initialSelectedIds);
-  const [totalCount, setTotalCount] = useState<number>(data.length);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [initialSelectedIds, setInitialSelectedIds] = useState<React.Key[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  // Reset selection state when modal opens
+  // Load initial selected IDs when modal opens
   useEffect(() => {
-    if (visible) {
-      setSelectedRowKeys(initialSelectedIds);
-      setTotalCount(data.length);
-    }
-  }, [visible, initialSelectedIds, data.length]);
+    if (visible && relation?.through) {
+      setSaving(false); // Reset saving state when modal opens
+      const loadInitialSelection = async () => {
+        try {
+          const { through } = relation;
+          // Get linked IDs from through table
+          const throughResponse = await getModelData({
+            name: through.through,
+            page: 1,
+            size: 10000,
+            cond: [
+              {
+                field: through.source_to_through_field,
+                eq: mainRecordId,
+              },
+            ],
+          });
 
-  const handleOk = () => {
-    onOk(selectedRowKeys);
-    onCancel();
+          if (throughResponse?.code === 0) {
+            const linkedIds = (throughResponse.data?.data || []).map(
+              (item: any) => item[through.target_to_through_field],
+            );
+            setInitialSelectedIds(linkedIds);
+            setSelectedRowKeys(linkedIds);
+          }
+        } catch (error) {
+          console.error('Failed to load initial selection:', error);
+        }
+      };
+
+      loadInitialSelection();
+    }
+  }, [visible, relation, mainRecordId]);
+
+  const handleOk = async () => {
+    if (saving) return; // Prevent double submission
+
+    setSaving(true);
+    try {
+      await onOk(selectedRowKeys, selectedRows, initialSelectedIds);
+      onCancel();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const rowSelection = {
     selectedRowKeys,
-    onChange: (newSelectedRowKeys: React.Key[]) => {
+    preserveSelectedRowKeys: true,
+    onChange: (newSelectedRowKeys: React.Key[], newSelectedRows: any[]) => {
       setSelectedRowKeys(newSelectedRowKeys);
+      // Merge new selections with existing ones (for pagination support)
+      setSelectedRows((prevRows) => {
+        const existingIds = new Set(prevRows.map((r) => r.id));
+        const newRows = newSelectedRows.filter((r) => !existingIds.has(r.id));
+        const keptRows = prevRows.filter((r) =>
+          newSelectedRowKeys.includes(r.id),
+        );
+        return [...keptRows, ...newRows];
+      });
     },
     getCheckboxProps: (record: any) => ({
       name: record.name,
@@ -51,18 +101,20 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
 
   return (
     <Modal
-      title={`Manage ${title} relations`}
+      title={`Link ${title}`}
       open={visible}
       onCancel={onCancel}
       onOk={handleOk}
       width={1000}
       style={{ top: 20 }}
-      okText="Confirm"
+      okText="Save"
       cancelText="Cancel"
+      confirmLoading={saving}
     >
       <div style={{ marginBottom: 16 }}>
         <span style={{ color: '#666' }}>
-          Selected {selectedRowKeys.length} / {totalCount} items
+          Selected {selectedRowKeys.length} items (Initially linked:{' '}
+          {initialSelectedIds.length})
         </span>
       </div>
 
@@ -76,8 +128,8 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
             // Build search conditions
             const conditions: any[] = [];
 
-            // Process form search conditions, only search fields in list_search
-            const searchFields = modelDesc.attrs?.list_search || [];
+            // Process form search conditions, only search fields in search_fields
+            const searchFields = modelDesc.attrs?.search_fields || [];
             Object.entries(params).forEach(([key, value]) => {
               if (
                 value &&
@@ -92,10 +144,8 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
               }
             });
 
-            // For M2M relation, request target model data
-            const targetModelName =
-              modelDesc.relation?.to || modelDesc.name || title;
-
+            // Get all target records (not just linked ones)
+            const targetModelName = relation.target || modelDesc.name;
             const response = await getModelData({
               name: targetModelName,
               page: params.current || 1,
@@ -105,16 +155,10 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
 
             if (response?.code === 0) {
               const responseData = response.data?.data || [];
-              const total = response.data?.count || 0;
-
-              // Update total count only when showing all data (no search conditions)
-              if (conditions.length === 0) {
-                setTotalCount(total);
-              }
 
               return {
                 data: responseData,
-                total: total,
+                total: response.data?.count || 0,
                 success: true,
               };
             }
@@ -147,56 +191,81 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
               key: fieldName,
               width: 150,
               ellipsis: true,
-              hideInSearch: !attrs.list_search?.includes(fieldName),
-              render: (value: any) => {
+              hideInSearch: !attrs.search_fields?.includes(fieldName),
+            };
+
+            // Set valueType and valueEnum for fields with choices
+            if (fieldConf.choices && fieldConf.choices.length > 0) {
+              column.valueType = 'select';
+              column.valueEnum = fieldConf.choices.reduce(
+                (acc: any, [value, label]: [string, string]) => {
+                  acc[value] = { text: label };
+                  return acc;
+                },
+                {},
+              );
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
                 if (value === null || value === undefined) return '-';
-
-                // Handle choice fields
-                if (fieldConf.choices && fieldConf.choices.length > 0) {
-                  const choice = fieldConf.choices.find(
-                    ([choiceValue]: [string, string]) => choiceValue === value,
-                  );
-                  return choice ? choice[1] : value;
-                }
-
-                // Handle boolean fields
-                if (fieldConf.field_type === 'BooleanField') {
-                  return value ? '✓' : '✗';
-                }
-
+                const choice = fieldConf.choices.find(
+                  ([choiceValue]: [string, string]) => choiceValue === value,
+                );
+                return choice ? choice[1] : value;
+              };
+            } else if (fieldConf.field_type === 'BooleanField') {
+              column.valueType = 'switch';
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
+                return value ? '✓' : '✗';
+              };
+            } else if (fieldConf.field_type === 'DateField') {
+              column.valueType = 'date';
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
+                if (value === null || value === undefined) return '-';
+                return value;
+              };
+            } else if (fieldConf.field_type === 'DatetimeField') {
+              column.valueType = 'dateTime';
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
+                if (value === null || value === undefined) return '-';
+                return value;
+              };
+            } else if (
+              fieldConf.field_type === 'IntegerField' ||
+              fieldConf.field_type === 'FloatField'
+            ) {
+              column.valueType = 'digit';
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
+                if (value === null || value === undefined) return '-';
+                const num = Number(value);
+                if (Number.isNaN(num)) return '-';
+                return num.toLocaleString();
+              };
+            } else {
+              column.valueType = 'text';
+              column.render = (_: any, record: any) => {
+                const value = record?.[fieldName];
+                if (value === null || value === undefined) return '-';
                 // Handle text truncation
                 if (typeof value === 'string' && value.length > 30) {
                   return `${value.substring(0, 30)}...`;
                 }
-
                 return value;
-              },
-            };
+              };
+            }
 
             // Add sort based on list_sort
             if (attrs.list_sort?.includes(fieldName)) {
               column.sorter = true;
             }
 
-            // Add filter based on list_filter
-            if (attrs.list_filter?.includes(fieldName)) {
-              if (fieldConf.choices && fieldConf.choices.length > 0) {
-                column.filters = fieldConf.choices.map(
-                  ([value, label]: [string, string]) => ({
-                    text: label,
-                    value: value,
-                  }),
-                );
-                column.onFilter = (value: any, record: any) => {
-                  return record[fieldName] === value;
-                };
-              }
-            }
-
             return column;
           })}
         search={
-          modelDesc.attrs?.list_search?.length > 0
+          modelDesc.attrs?.search_fields?.length > 0
             ? {
                 labelWidth: 120,
                 defaultCollapsed: false,

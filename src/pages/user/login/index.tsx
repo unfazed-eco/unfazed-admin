@@ -349,7 +349,6 @@ const Login: React.FC = () => {
                       gap: 4, // 控制文字和图标之间的间距
                     }}
                   >
-                    {/* biome-ignore lint/correctness/useUniqueElementIds: react-intl id 不是 DOM id */}
                     <FormattedMessage
                       key="loginWith"
                       id="pages.login.loginWith"
@@ -406,7 +405,6 @@ const Login: React.FC = () => {
                   {
                     required: true,
                     message: (
-                      // biome-ignore lint/correctness/useUniqueElementIds: react-intl id 不是 DOM id
                       <FormattedMessage
                         id="pages.login.username.required"
                         defaultMessage="请输入用户名!"
@@ -429,7 +427,6 @@ const Login: React.FC = () => {
                   {
                     required: true,
                     message: (
-                      // biome-ignore lint/correctness/useUniqueElementIds: react-intl id 不是 DOM id
                       <FormattedMessage
                         id="pages.login.password.required"
                         defaultMessage="请输入密码！"
@@ -447,7 +444,6 @@ const Login: React.FC = () => {
               }}
             >
               <ProFormCheckbox noStyle name="autoLogin">
-                {/* biome-ignore lint/correctness/useUniqueElementIds: react-intl id 不是 DOM id */}
                 <FormattedMessage
                   id="pages.login.rememberMe"
                   defaultMessage="自动登录"
@@ -458,7 +454,6 @@ const Login: React.FC = () => {
                   float: 'right',
                 }}
               >
-                {/* biome-ignore lint/correctness/useUniqueElementIds: react-intl id 不是 DOM id */}
                 <FormattedMessage
                   id="pages.login.forgotPassword"
                   defaultMessage="忘记密码"

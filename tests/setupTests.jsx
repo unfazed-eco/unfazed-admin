@@ -66,8 +66,7 @@ Object.defineProperty(global.window.console, 'error', {
       ) ||
       // Filter out CKEditor CSS parsing errors in jsdom
       logStr.includes('Could not parse CSS stylesheet') ||
-      (rest[0]?.message &&
-        rest[0].message.includes('Could not parse CSS stylesheet'))
+      rest[0]?.message?.includes('Could not parse CSS stylesheet')
     ) {
       return;
     }
@@ -78,8 +77,8 @@ Object.defineProperty(global.window.console, 'error', {
 // Mock CKEditor5 to avoid CSS parsing issues in jsdom
 jest.mock('@ckeditor/ckeditor5-build-classic', () => ({
   __esModule: true,
-  default: class MockEditor {
-    static create() {
+  default: {
+    create() {
       return Promise.resolve({
         destroy: jest.fn(),
         getData: jest.fn(() => ''),
@@ -97,13 +96,13 @@ jest.mock('@ckeditor/ckeditor5-build-classic', () => ({
           },
         },
       });
-    }
+    },
   },
 }));
 
 jest.mock('@ckeditor/ckeditor5-react', () => ({
   __esModule: true,
-  CKEditor: ({ onChange, data }) => {
+  CKEditor: () => {
     return null;
   },
 }));
