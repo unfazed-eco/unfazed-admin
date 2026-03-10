@@ -2,7 +2,7 @@
 
 import { join } from 'node:path';
 import { defineConfig } from '@umijs/max';
-import { PUBLIC_PATH } from './constants';
+import { CDN_URL, PUBLIC_PATH } from './constants';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
 import routes from './routes';
@@ -26,7 +26,7 @@ export default defineConfig({
    * @description 设置公共路径，通常用于部署到非根目录
    * @doc https://umijs.org/docs/api/config#publicpath
    */
-  publicPath: PUBLIC_PATH,
+  publicPath: CDN_URL,
   /**
    * @name 设置路由 base
    * @description 设置路由前缀，通常用于部署到非根目录
@@ -156,7 +156,7 @@ export default defineConfig({
    */
   headScripts: [
     // 解决首次加载时白屏的问题
-    { src: join(PUBLIC_PATH, 'scripts/loading.js'), async: true },
+    { src: join(CDN_URL, 'scripts/loading.js'), async: true },
   ],
   //================ pro 插件配置 =================
   presets: ['umi-presets-pro'],
@@ -179,6 +179,7 @@ export default defineConfig({
   links: [
     {
       rel: 'icon',
+      type: 'image/png',
       href: 'https://unfazed-eco.github.io/images/uz-logo.png',
     },
   ],

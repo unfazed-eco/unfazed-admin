@@ -43,6 +43,8 @@ const OAuthLogin: React.FC = () => {
           // 合并API设置和默认设置，保留前端特有字段
           settings = {
             ...response.data,
+            logo: response.data.logo || Settings.logo,
+            title: response.data.title || Settings.title,
             fixSiderbar: response.data.fixSiderbar ?? Settings.fixSiderbar,
             pwa: response.data.pwa ?? Settings.pwa,
             iconfontUrl: response.data.iconfontUrl ?? Settings.iconfontUrl,
