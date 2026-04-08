@@ -169,19 +169,70 @@ export const useActionExecutor = ({
             }
 
             case 'download':
-              // Handle file download
-              if (response.data && typeof response.data === 'string') {
-                const blob = new Blob([response.data], { type: 'text/plain' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${actionConfig.name}_${Date.now()}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-              }
-              messageApi.success('File downloaded successfully');
+              // Handle file download for multiple response shapes:
+              // 1) data as plain string
+              // 2) data.url / data.filename
+              // 3) data.content / data.contentType / data.filename
+              // 4) data.download.url or data.download.content
+              (() => {
+                const defaultFilename = `${actionConfig.name}_${Date.now()}.txt`;
+                const payload = response?.data;
+                const nestedDownload =
+                  payload && typeof payload === 'object'
+                    ? (payload as any).download
+                    : undefined;
+                const normalized =
+                  nestedDownload && typeof nestedDownload === 'object'
+                    ? nestedDownload
+                    : payload;
+
+                if (
+                  normalized &&
+                  typeof normalized === 'object' &&
+                  normalized.url
+                ) {
+                  const link = document.createElement('a');
+                  link.href = normalized.url;
+                  link.download = normalized.filename || defaultFilename;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  messageApi.success('File downloaded successfully');
+                  return;
+                }
+
+                const hasContent =
+                  typeof payload === 'string' ||
+                  (normalized &&
+                    typeof normalized === 'object' &&
+                    normalized.content !== undefined);
+                if (hasContent) {
+                  const content =
+                    typeof payload === 'string' ? payload : normalized.content;
+                  const contentType =
+                    typeof payload === 'string'
+                      ? 'text/plain'
+                      : normalized.contentType || 'application/octet-stream';
+                  const filename =
+                    typeof payload === 'string'
+                      ? defaultFilename
+                      : normalized.filename || defaultFilename;
+
+                  const blob = new Blob([content], { type: contentType });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                  messageApi.success('File downloaded successfully');
+                  return;
+                }
+
+                messageApi.warning('No downloadable content returned');
+              })();
               break;
 
             case 'refresh':

@@ -15,6 +15,7 @@ interface MainFormTabProps {
   isCreateMode: boolean;
   messageApi: any;
   onBack?: () => void;
+  onValuesChange?: (values: Record<string, any>) => void;
 }
 
 const MainFormTab: React.FC<MainFormTabProps> = ({
@@ -26,6 +27,7 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
   isCreateMode,
   messageApi,
   onBack,
+  onValuesChange,
 }) => {
   return (
     <Card>
@@ -35,6 +37,9 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
         initialValues={record}
+        onValuesChange={(_, allValues) => {
+          onValuesChange?.(allValues as Record<string, any>);
+        }}
         onFinish={async (values) => {
           try {
             const dataToSave = isCreateMode ? values : { ...record, ...values };

@@ -3,7 +3,13 @@ import type { ProFormInstance } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
 import { Button, Modal, Spin, Tabs } from 'antd';
-import React, { useCallback, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   batchSaveModelData,
   deleteModelData,
@@ -37,7 +43,30 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
 
   // Check if create mode
   const isCreateMode = record.id === -1;
-  const [hasMainDataSaved, _setHasMainDataSaved] = useState(!isCreateMode);
+  const defaultMainValues = useMemo(() => {
+    const defaults: Record<string, any> = {};
+    Object.entries(modelDesc?.fields || {}).forEach(
+      ([fieldName, fieldConfig]) => {
+        if (
+          fieldConfig?.default !== undefined &&
+          fieldConfig?.default !== null
+        ) {
+          defaults[fieldName] = fieldConfig.default;
+        }
+      },
+    );
+    return defaults;
+  }, [modelDesc]);
+  const initialMainData = useMemo(
+    () => ({ ...defaultMainValues, ...record }),
+    [defaultMainValues, record],
+  );
+  const [mainRecordData, setMainRecordData] =
+    useState<Record<string, any>>(initialMainData);
+
+  useEffect(() => {
+    setMainRecordData(initialMainData);
+  }, [initialMainData]);
 
   // Check if editing is allowed
   const canEdit = modelDesc.attrs.can_edit !== false;
@@ -57,7 +86,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     handleBackRelationLink,
     handleBackRelationUnlink,
     addInlineRecord,
-  } = useInlineOperations({ mainRecord: record });
+  } = useInlineOperations({ mainRecord: mainRecordData });
 
   // State management
   const [activeTab, setActiveTab] = useState('main');
@@ -88,7 +117,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   const handleBatchSave = useCallback(
     async (inlineName: string, relation: any, rows: Record<string, any>[]) => {
       const sourceValue = relation
-        ? record?.[relation.source_field as string]
+        ? mainRecordData?.[relation.source_field as string]
         : undefined;
       const payloadList = rows.map((row) => {
         const next = { ...(row || {}) };
@@ -130,12 +159,12 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         setBatchSaveLoading((prev) => ({ ...prev, [inlineName]: false }));
       }
     },
-    [messageApi, record],
+    [mainRecordData, messageApi],
   );
 
   // Use inline tab renderer hook
   const { renderInlineComponent, debouncedReload } = useInlineTabRenderer({
-    record,
+    record: mainRecordData,
     inlineDescs,
     loadedTabs,
     editingKeys,
@@ -167,8 +196,8 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     {
       manual: false,
       onSuccess: (resp: any) => {
-        if (formRef.current && record) {
-          formRef.current.setFieldsValue(record);
+        if (formRef.current) {
+          formRef.current.setFieldsValue(initialMainData);
         }
         setInlineDescs(resp || {});
       },
@@ -178,13 +207,6 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   // Handle tab change
   const handleTabChange = useCallback(
     (key: string) => {
-      if (key !== 'main' && !hasMainDataSaved) {
-        messageApi.warning(
-          'Please save the main data first before accessing related data',
-        );
-        return;
-      }
-
       setActiveTab(key);
 
       // Mark tab as loaded (CommonProTable's onRequest will handle data fetching)
@@ -192,7 +214,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         markTabLoaded(key);
       }
     },
-    [loadedTabs, hasMainDataSaved, messageApi, markTabLoaded],
+    [loadedTabs, markTabLoaded],
   );
 
   // Delete main record
@@ -233,25 +255,25 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         <MainFormTab
           modelName={modelName}
           modelDesc={modelDesc}
-          record={record}
+          record={mainRecordData}
           formRef={formRef}
           canEdit={canEdit}
           isCreateMode={isCreateMode}
           messageApi={messageApi}
           onBack={onBack}
+          onValuesChange={(values) => {
+            setMainRecordData((prev) => ({ ...prev, ...values }));
+          }}
         />
       ),
     },
-    // Only show inline tabs when main data is saved
-    ...(hasMainDataSaved
-      ? Object.keys(inlineDescs).map((inlineName) => ({
-          key: inlineName,
-          label:
-            inlineDescs[inlineName]?.attrs?.label ||
-            capitalizeFirstLetter(inlineName),
-          children: renderInlineComponent(inlineName),
-        }))
-      : []),
+    ...Object.keys(inlineDescs).map((inlineName) => ({
+      key: inlineName,
+      label:
+        inlineDescs[inlineName]?.attrs?.label ||
+        capitalizeFirstLetter(inlineName),
+      children: renderInlineComponent(inlineName),
+    })),
   ];
 
   return (
@@ -304,7 +326,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             title={inlineDesc.attrs?.verbose_name || inlineName}
             modelDesc={inlineDesc}
             relation={relation}
-            mainRecordId={record[relation.through.source_field]}
+            mainRecordId={mainRecordData[relation.through.source_field]}
             onCancel={() => {
               setM2MModalVisible((prev) => ({ ...prev, [inlineName]: false }));
             }}
@@ -358,7 +380,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             modelName={inlineName}
             modelDesc={inlineDesc}
             relation={relation}
-            mainRecordId={record.id}
+            mainRecordId={mainRecordData.id}
             isSingleSelect={isBkO2O}
             loading={linkLoading}
             onCancel={() => {
@@ -422,7 +444,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
               inlineName={inlineName}
               inlineDesc={inlineDesc}
               relation={relation}
-              mainRecord={record}
+              mainRecord={mainRecordData}
               messageApi={messageApi}
               onClose={() => {
                 setBackRelationAddModalVisible((prev) => ({
@@ -493,7 +515,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
               inlineName={inlineName}
               inlineDesc={inlineDesc}
               relation={relation}
-              mainRecord={record}
+              mainRecord={mainRecordData}
               messageApi={messageApi}
               onClose={() => {
                 setBackRelationEditModalRecord((prev) => ({

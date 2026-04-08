@@ -9,6 +9,8 @@ interface UseRequestHandlersOptions {
 export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
   // Memoized request handlers for each inline table to prevent unnecessary re-requests
   const inlineRequestHandlers = useRef<InlineRequestHandlersMap>({});
+  const mainRecordRef = useRef<Record<string, any>>(record);
+  mainRecordRef.current = record;
 
   // Create stable request handler for back relation tables
   const createBackRelationRequestHandler = useCallback(
@@ -27,7 +29,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
           const baseConditions = [
             {
               field: relation.target_field,
-              eq: record[relation.source_field],
+              eq: mainRecordRef.current[relation.source_field],
             },
           ];
 
@@ -74,7 +76,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
       inlineRequestHandlers.current[cacheKey] = handler;
       return handler;
     },
-    [record],
+    [],
   );
 
   // Create stable request handler for forward relation (fk/o2o) tables
@@ -94,7 +96,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
           const baseConditions = [
             {
               field: fkRelation.source_field,
-              eq: record[fkRelation.target_field],
+              eq: mainRecordRef.current[fkRelation.target_field],
             },
           ];
 
@@ -141,7 +143,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
       inlineRequestHandlers.current[cacheKey] = handler;
       return handler;
     },
-    [record],
+    [],
   );
 
   // Create stable request handler for M2M tables
@@ -177,7 +179,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
             cond: [
               {
                 field: throughInfo.source_to_through_field,
-                eq: record[throughInfo.source_field],
+                eq: mainRecordRef.current[throughInfo.source_field],
               },
             ],
           });
@@ -253,7 +255,7 @@ export const useRequestHandlers = ({ record }: UseRequestHandlersOptions) => {
       inlineRequestHandlers.current[cacheKey] = handler;
       return handler;
     },
-    [record],
+    [],
   );
 
   return {
