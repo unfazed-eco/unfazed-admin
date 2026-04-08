@@ -2483,6 +2483,75 @@ export default {
     }
   },
 
+  // Crown 模型批量保存
+  'POST /api/admin/batch-model-save': async (req: Request, res: Response) => {
+    const { name, data } = req.body;
+    await waitTime(800);
+
+    if (!Array.isArray(data)) {
+      res.send({
+        code: 1,
+        message: 'data must be a list',
+        data: null,
+      });
+      return;
+    }
+
+    if (name === 'crown_history') {
+      const savedList: any[] = [];
+      data.forEach((item: any) => {
+        const isUpdate = typeof item.id === 'number' && item.id > 0;
+        if (isUpdate) {
+          const index = crownHistoryData.findIndex((row) => row.id === item.id);
+          if (index > -1) {
+            const next = {
+              ...crownHistoryData[index],
+              ...item,
+              updated_at: new Date().toISOString(),
+            };
+            crownHistoryData[index] = next;
+            savedList.push(next);
+          } else {
+            const next = {
+              ...item,
+              updated_at: new Date().toISOString(),
+            };
+            crownHistoryData.push(next);
+            savedList.push(next);
+          }
+        } else {
+          const next = {
+            ...item,
+            id: Math.max(...crownHistoryData.map((row) => row.id), 0) + 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          crownHistoryData.push(next);
+          savedList.push(next);
+        }
+      });
+
+      res.send({
+        code: 0,
+        message: 'success',
+        data: {
+          message: `${savedList.length} crown history record(s) batch saved successfully`,
+          saved_data: savedList,
+        },
+      });
+      return;
+    }
+
+    res.send({
+      code: 0,
+      message: 'success',
+      data: {
+        message: `${data.length} record(s) batch saved successfully`,
+        saved_data: data,
+      },
+    });
+  },
+
   // Crown 模型内联信息
   'POST /api/admin/model-inlines': async (req: Request, res: Response) => {
     const { name } = req.body;

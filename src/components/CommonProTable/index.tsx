@@ -42,7 +42,9 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   onLink,
   linkDisabled,
   onAddRelated,
+  onBatchAddRelated,
   onDeleteRelated,
+  onEditRelated,
   onRequest,
   tableProps = {},
   actionRef,
@@ -72,6 +74,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     onDelete,
     onUnlink,
     onDeleteRelated,
+    onEditRelated,
   });
 
   // Generate batch action menu items
@@ -134,6 +137,20 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
       );
     }
 
+    // Batch Add button for bk_fk inline paste flow
+    if (onBatchAddRelated) {
+      buttons.push(
+        <Button
+          key="batch-add-related"
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={onBatchAddRelated}
+        >
+          Batch Add
+        </Button>,
+      );
+    }
+
     // Standard add button
     if (modelDesc.attrs.can_add) {
       buttons.push(
@@ -149,7 +166,14 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     }
 
     return buttons;
-  }, [modelDesc, onAction, onLink, linkDisabled, onAddRelated]);
+  }, [
+    modelDesc,
+    onAction,
+    onLink,
+    linkDisabled,
+    onAddRelated,
+    onBatchAddRelated,
+  ]);
 
   const columns = useMemo(() => generateColumns(), [generateColumns]);
 

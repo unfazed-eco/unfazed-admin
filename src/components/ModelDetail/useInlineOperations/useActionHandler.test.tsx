@@ -85,7 +85,7 @@ describe('useActionHandler', () => {
       expect(api.executeModelAction).toHaveBeenCalledWith({
         name: 'crown_history',
         action: 'batch_action',
-        form_data: {},
+        input_data: {},
         search_condition: [],
       });
     });

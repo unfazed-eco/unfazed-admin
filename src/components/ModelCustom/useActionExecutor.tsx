@@ -122,14 +122,17 @@ export const useActionExecutor = ({
             : formRef.current?.getFieldsValue?.() || {};
 
         const searchConditions = buildSearchConditions(rawValues, toolDesc);
-        const formPayload =
-          actionConfig.input === 'empty' ? {} : formData || {};
+        const payloadData =
+          formData && Object.keys(formData).length > 0 ? formData : rawValues;
+        const isBatchAction = Boolean((actionConfig as any)?.batch);
 
         const response = await executeModelAction({
           name: toolName,
           action: actionKey,
-          form_data: formPayload,
           search_condition: searchConditions,
+          ...(isBatchAction
+            ? { input_data: payloadData }
+            : { form_data: payloadData }),
         });
 
         if (response?.code === 0) {

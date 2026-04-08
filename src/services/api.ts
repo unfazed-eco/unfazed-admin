@@ -136,6 +136,18 @@ export async function saveModelData(params: API.ModelSaveRequest, options?: { [k
     });
 }
 
+/** 批量保存模型数据 POST /api/${PATH_PREFIX}/batch-model-save */
+export async function batchSaveModelData(params: API.ModelBatchSaveRequest, options?: { [key: string]: any }) {
+    return request<any>(`/api/${PATH_PREFIX}/batch-model-save`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        data: params,
+        ...(options || {}),
+    });
+}
+
 /** 删除模型数据 POST /api/${PATH_PREFIX}/model-delete */
 export async function deleteModelData(params: API.ModelDeleteRequest, options?: { [key: string]: any }) {
     return request<any>(`/api/${PATH_PREFIX}/model-delete`, {

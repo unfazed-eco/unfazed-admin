@@ -408,4 +408,88 @@ describe('BackRelationAddModal', () => {
       'Add crown_history',
     );
   });
+
+  it('should call onSubmitData in create mode and skip saveModelData API', async () => {
+    const onSubmitData = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <BackRelationAddModal
+        visible={true}
+        mode="create"
+        onSubmitData={onSubmitData}
+        inlineName="crown_history"
+        inlineDesc={mockInlineDesc}
+        relation={mockRelation}
+        mainRecord={mockMainRecord}
+        messageApi={mockMessageApi}
+        onClose={mockOnClose}
+        onSuccess={mockOnSuccess}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('field-name'), {
+      target: { value: 'Draft History' },
+    });
+    fireEvent.click(screen.getByTestId('submit-btn'));
+
+    await waitFor(() => {
+      expect(onSubmitData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          crown_id: 1,
+          name: 'Draft History',
+        }),
+        'create',
+      );
+      expect(api.saveModelData).not.toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+      expect(mockOnSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it('should render edit mode title and call onSubmitData with edit mode', async () => {
+    const onSubmitData = jest.fn().mockResolvedValue(undefined);
+    const initialData = {
+      id: 99,
+      name: 'Old Name',
+      description: 'Old desc',
+      crown_id: 1,
+    };
+
+    render(
+      <BackRelationAddModal
+        visible={true}
+        mode="edit"
+        initialData={initialData}
+        onSubmitData={onSubmitData}
+        inlineName="crown_history"
+        inlineDesc={mockInlineDesc}
+        relation={mockRelation}
+        mainRecord={mockMainRecord}
+        messageApi={mockMessageApi}
+        onClose={mockOnClose}
+        onSuccess={mockOnSuccess}
+      />,
+    );
+
+    expect(screen.getByTestId('modal-title').textContent).toBe(
+      'Edit Crown History',
+    );
+
+    fireEvent.change(screen.getByTestId('field-name'), {
+      target: { value: 'New Name' },
+    });
+    fireEvent.click(screen.getByTestId('submit-btn'));
+
+    await waitFor(() => {
+      expect(onSubmitData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 99,
+          crown_id: 1,
+          name: 'New Name',
+        }),
+        'edit',
+      );
+      expect(api.saveModelData).not.toHaveBeenCalled();
+    });
+  });
 });

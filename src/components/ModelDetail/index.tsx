@@ -4,14 +4,22 @@ import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
 import { Button, Modal, Spin, Tabs } from 'antd';
 import React, { useCallback, useRef, useState } from 'react';
-import { deleteModelData, getModelInlines } from '@/services/api';
+import {
+  batchSaveModelData,
+  deleteModelData,
+  getModelInlines,
+} from '@/services/api';
 import BackRelationAddModal from './BackRelationAddModal';
+import BackRelationBatchAddModal from './BackRelationBatchAddModal';
 import BackRelationSelectionModal from './BackRelationSelectionModal';
 import { useInlineTabRenderer } from './InlineTabRenderer';
 import M2MSelectionModal from './M2MSelectionModal';
 import MainFormTab from './MainFormTab';
 import type {
   InlineActionRefsMap,
+  InlineBatchLoadingState,
+  InlinePreviewDataState,
+  ModalRecordState,
   ModalVisibilityState,
   ModelDetailProps,
 } from './types';
@@ -61,11 +69,69 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     useState<ModalVisibilityState>({});
   const [backRelationAddModalVisible, setBackRelationAddModalVisible] =
     useState<ModalVisibilityState>({});
+  const [
+    backRelationBatchAddModalVisible,
+    setBackRelationBatchAddModalVisible,
+  ] = useState<ModalVisibilityState>({});
+  const [backRelationEditModalRecord, setBackRelationEditModalRecord] =
+    useState<ModalRecordState>({});
+  const [previewInlineData, setPreviewInlineData] =
+    useState<InlinePreviewDataState>({});
+  const [batchSaveLoading, setBatchSaveLoading] =
+    useState<InlineBatchLoadingState>({});
   const [linkLoading, setLinkLoading] = useState(false);
   // Global loading state for inline operations
   const [operationLoading, setOperationLoading] = useState(false);
   // Action refs for inline tables to enable reload
   const inlineActionRefs = useRef<InlineActionRefsMap>({});
+
+  const handleBatchSave = useCallback(
+    async (inlineName: string, relation: any, rows: Record<string, any>[]) => {
+      const sourceValue = relation
+        ? record?.[relation.source_field as string]
+        : undefined;
+      const payloadList = rows.map((row) => {
+        const next = { ...(row || {}) };
+        if (relation?.target_field) {
+          next[relation.target_field] = sourceValue;
+        }
+        // For batch create rows, always send id = -1 instead of omitting id.
+        if (typeof next.id !== 'number' || next.id <= 0) {
+          next.id = -1;
+        }
+        delete (next as any).key;
+        return next;
+      });
+
+      setBatchSaveLoading((prev) => ({ ...prev, [inlineName]: true }));
+      try {
+        const response = await batchSaveModelData({
+          name: inlineName,
+          data: payloadList,
+        });
+        if (response?.code === 0) {
+          messageApi.success('Batch saved successfully');
+          setPreviewInlineData((prev) => ({
+            ...prev,
+            [inlineName]: undefined,
+          }));
+          setBackRelationBatchAddModalVisible((prev) => ({
+            ...prev,
+            [inlineName]: false,
+          }));
+          inlineActionRefs.current[inlineName]?.reload?.();
+        } else {
+          messageApi.error(response?.message || 'Batch save failed');
+        }
+      } catch (error) {
+        messageApi.error('Batch save failed');
+        console.error('Batch save error:', error);
+      } finally {
+        setBatchSaveLoading((prev) => ({ ...prev, [inlineName]: false }));
+      }
+    },
+    [messageApi, record],
+  );
 
   // Use inline tab renderer hook
   const { renderInlineComponent, debouncedReload } = useInlineTabRenderer({
@@ -82,6 +148,10 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     setM2MModalVisible,
     setBackRelationModalVisible,
     setBackRelationAddModalVisible,
+    setBackRelationBatchAddModalVisible,
+    setBackRelationEditModalRecord,
+    previewInlineData,
+    setPreviewInlineData,
     setOperationLoading,
     inlineActionRefs,
   });
@@ -348,6 +418,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             <BackRelationAddModal
               key={`add-${inlineName}`}
               visible={visible}
+              mode="create"
               inlineName={inlineName}
               inlineDesc={inlineDesc}
               relation={relation}
@@ -360,6 +431,81 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                 }));
               }}
               onSuccess={() => {
+                debouncedReload(inlineName);
+              }}
+            />
+          );
+        },
+      )}
+
+      {/* Back relation (bk_fk) batch add modals - for batch paste/preview/save */}
+      {Object.entries(backRelationBatchAddModalVisible).map(
+        ([inlineName, visible]) => {
+          if (!visible || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc?.relation;
+          if (relation?.relation !== 'bk_fk') return null;
+
+          return (
+            <BackRelationBatchAddModal
+              key={`batch-add-${inlineName}`}
+              visible={visible}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              messageApi={messageApi}
+              batchSaveLoading={batchSaveLoading[inlineName]}
+              onPreview={(rows) => {
+                setPreviewInlineData((prev) => ({
+                  ...prev,
+                  [inlineName]: rows,
+                }));
+              }}
+              onBatchSave={(rows) =>
+                handleBatchSave(inlineName, relation, rows)
+              }
+              onClose={() => {
+                setBackRelationBatchAddModalVisible((prev) => ({
+                  ...prev,
+                  [inlineName]: false,
+                }));
+              }}
+            />
+          );
+        },
+      )}
+
+      {/* Back relation (bk_fk) edit modals - for editing existing related records */}
+      {Object.entries(backRelationEditModalRecord).map(
+        ([inlineName, editRecord]) => {
+          if (!editRecord || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc.relation;
+
+          return (
+            <BackRelationAddModal
+              key={`edit-${inlineName}-${editRecord.id || 'record'}`}
+              visible={true}
+              mode="edit"
+              initialData={editRecord}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              mainRecord={record}
+              messageApi={messageApi}
+              onClose={() => {
+                setBackRelationEditModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+              }}
+              onSuccess={() => {
+                setBackRelationEditModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
                 debouncedReload(inlineName);
               }}
             />

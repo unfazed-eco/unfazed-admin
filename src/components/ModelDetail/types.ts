@@ -16,6 +16,18 @@ export interface ModalVisibilityState {
   [key: string]: boolean;
 }
 
+export interface ModalRecordState {
+  [key: string]: Record<string, any> | null;
+}
+
+export interface InlinePreviewDataState {
+  [key: string]: Record<string, any>[] | undefined;
+}
+
+export interface InlineBatchLoadingState {
+  [key: string]: boolean;
+}
+
 export interface InlineRequestHandlersMap {
   [key: string]: any;
 }

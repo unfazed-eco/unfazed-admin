@@ -46,6 +46,7 @@ interface UseColumnGeneratorOptions {
   onDelete?: (record: Record<string, any>) => Promise<void>;
   onUnlink?: (record: Record<string, any>) => Promise<void>;
   onDeleteRelated?: (record: Record<string, any>) => Promise<void>;
+  onEditRelated?: (record: Record<string, any>) => void;
 }
 
 export const useColumnGenerator = ({
@@ -60,6 +61,7 @@ export const useColumnGenerator = ({
   onDelete,
   onUnlink,
   onDeleteRelated,
+  onEditRelated,
 }: UseColumnGeneratorOptions) => {
   const generateColumns = useCallback((): ProColumns<Record<string, any>>[] => {
     const columns: ProColumns<Record<string, any>>[] = [];
@@ -412,7 +414,8 @@ export const useColumnGenerator = ({
 
     // Add action column
     const hasDetailAction = !!onDetail;
-    const hasEditAction = modelDesc.attrs.can_edit;
+    const hasInlineEditAction = modelDesc.attrs.can_edit && !onEditRelated;
+    const hasPopupEditAction = !!onEditRelated;
     const hasDeleteAction = modelDesc.attrs.can_delete && !onUnlink;
     const hasUnlinkAction = !!onUnlink;
     const nonBatchActions = Object.values(modelDesc.actions || {}).filter(
@@ -422,7 +425,8 @@ export const useColumnGenerator = ({
 
     if (
       hasDetailAction ||
-      hasEditAction ||
+      hasInlineEditAction ||
+      hasPopupEditAction ||
       hasDeleteAction ||
       hasUnlinkAction ||
       onDeleteRelated ||
@@ -431,7 +435,7 @@ export const useColumnGenerator = ({
       // Calculate action column width
       let actionWidth = 40;
       if (hasDetailAction) actionWidth += 70;
-      if (hasEditAction) actionWidth += 70;
+      if (hasInlineEditAction || hasPopupEditAction) actionWidth += 70;
       if (hasDeleteAction) actionWidth += 70;
       if (hasUnlinkAction) actionWidth += 80;
       if (onDeleteRelated) actionWidth += 80;
@@ -464,7 +468,7 @@ export const useColumnGenerator = ({
           }
 
           // Edit buttons
-          if (hasEditAction) {
+          if (hasInlineEditAction) {
             if (isEditing) {
               actions.push(
                 <Button
@@ -513,6 +517,21 @@ export const useColumnGenerator = ({
                 </Button>,
               );
             }
+          }
+
+          // Popup edit button
+          if (hasPopupEditAction && !isEditing) {
+            actions.push(
+              <Button
+                key="edit-related"
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => onEditRelated?.(record)}
+              >
+                Edit
+              </Button>,
+            );
           }
 
           // Unlink button
@@ -633,6 +652,7 @@ export const useColumnGenerator = ({
     onDelete,
     onUnlink,
     onDeleteRelated,
+    onEditRelated,
     editableKeys,
     setEditableKeys,
     pendingUnlinkRef,

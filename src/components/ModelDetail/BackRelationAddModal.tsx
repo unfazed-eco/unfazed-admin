@@ -6,6 +6,12 @@ import { renderFormField } from '@/utils/formFieldRenderer';
 
 interface BackRelationAddModalProps {
   visible: boolean;
+  mode?: 'create' | 'edit';
+  initialData?: Record<string, any> | null;
+  onSubmitData?: (
+    data: Record<string, any>,
+    mode: 'create' | 'edit',
+  ) => Promise<void> | void;
   inlineName: string;
   inlineDesc: any;
   relation: any;
@@ -17,6 +23,9 @@ interface BackRelationAddModalProps {
 
 const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
   visible,
+  mode = 'create',
+  initialData,
+  onSubmitData,
   inlineName,
   inlineDesc,
   relation,
@@ -25,10 +34,18 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const isEditMode = mode === 'edit';
+  const modalTitlePrefix = isEditMode ? 'Edit' : 'Add';
+  const submitText = isEditMode ? 'Save' : 'Create';
+  const successMessage = isEditMode
+    ? 'Updated successfully'
+    : 'Created successfully';
+  const failedMessage = isEditMode ? 'Update failed' : 'Create failed';
+
   return (
     <Modal
       open={visible}
-      title={`Add ${inlineDesc?.attrs?.label || inlineName}`}
+      title={`${modalTitlePrefix} ${inlineDesc?.attrs?.label || inlineName}`}
       width={800}
       destroyOnClose
       onCancel={onClose}
@@ -43,13 +60,23 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
         layout="horizontal"
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
+        initialValues={isEditMode ? initialData || {} : undefined}
         onFinish={async (values) => {
           try {
-            // Add the FK field value to link to main record
+            // Keep original record payload for update mode, then merge user changes.
+            const baseData = isEditMode ? { ...(initialData || {}) } : {};
             const dataToSave = {
+              ...baseData,
               ...values,
               [relation.target_field]: mainRecord[relation.source_field],
             };
+
+            if (onSubmitData) {
+              await onSubmitData(dataToSave, mode);
+              onClose();
+              onSuccess();
+              return;
+            }
 
             const response = await saveModelData({
               name: inlineName,
@@ -57,20 +84,20 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
             });
 
             if (response?.code === 0) {
-              messageApi.success('Created successfully');
+              messageApi.success(successMessage);
               onClose();
               onSuccess();
             } else {
-              messageApi.error(response?.message || 'Create failed');
+              messageApi.error(response?.message || failedMessage);
             }
           } catch (error) {
-            messageApi.error('Create failed');
-            console.error('Create error:', error);
+            messageApi.error(failedMessage);
+            console.error(`${mode} error:`, error);
           }
         }}
         submitter={{
           searchConfig: {
-            submitText: 'Create',
+            submitText,
             resetText: 'Cancel',
           },
           onReset: onClose,

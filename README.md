@@ -71,8 +71,10 @@
   const response = await executeModelAction({
     name: toolName,
     action: actionKey,
-    form_data: actionConfig.input === 'empty' ? {} : formData || {},
     search_condition: searchConditions,
+    ...(actionConfig.batch
+      ? { input_data: formData || {} }
+      : { form_data: formData || {} }),
   });
   ```
 

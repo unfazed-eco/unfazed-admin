@@ -12,5 +12,7 @@ export interface ActionConfig {
   label?: string;
   input: 'empty' | 'form' | string;
   output: 'toast' | 'display' | 'download' | 'refresh' | string;
+  confirm?: boolean;
+  description?: string;
   batch?: boolean;
 }
