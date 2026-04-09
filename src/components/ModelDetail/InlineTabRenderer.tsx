@@ -23,6 +23,7 @@ interface InlineTabRendererProps {
     actionRecord?: any,
     isBatch?: boolean,
     records?: any[],
+    searchParams?: Record<string, any>,
   ) => void;
   handleInlineSave: (
     inlineName: string,
@@ -158,6 +159,7 @@ export const useInlineTabRenderer = ({
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -166,6 +168,7 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 onUnlink={async (unlinkRecord: any) => {
@@ -236,6 +239,7 @@ export const useInlineTabRenderer = ({
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -244,6 +248,7 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 onSave={async (saveRecord: any) => {
@@ -356,6 +361,7 @@ export const useInlineTabRenderer = ({
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -364,6 +370,7 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 // Unlink button - only show when target_field is nullable

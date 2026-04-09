@@ -7,6 +7,22 @@ interface UseActionHandlerOptions {
 }
 
 export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
+  const sanitizeSearchParams = useCallback((params?: Record<string, any>) => {
+    if (!params) return {};
+    const {
+      current: _current,
+      pageSize: _pageSize,
+      _timestamp,
+      ...rest
+    } = params;
+
+    return Object.fromEntries(
+      Object.entries(rest).filter(
+        ([, value]) => value !== undefined && value !== null && value !== '',
+      ),
+    );
+  }, []);
+
   // Handle inline action execution
   const executeInlineAction = useCallback(
     async (
@@ -15,14 +31,20 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
       action: any,
       record?: any,
       isBatch?: boolean,
+      searchParams?: Record<string, any>,
     ) => {
       const cond = record ? [{ field: 'id', eq: record.id }] : [];
+      const formData = record ? { ...record } : {};
+      const cleanedSearchParams = sanitizeSearchParams(searchParams);
+      const hasSearchParams = Object.keys(cleanedSearchParams).length > 0;
 
       const response = await executeModelAction({
         name: inlineName,
         action: actionKey,
         search_condition: isBatch ? [] : cond,
-        ...(isBatch ? { input_data: {} } : { form_data: {} }),
+        ...(isBatch
+          ? { input_data: hasSearchParams ? cleanedSearchParams : {} }
+          : { form_data: formData }),
       });
 
       if (response?.code === 0) {
@@ -97,7 +119,7 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
         messageApi.error(response?.message || 'Action failed');
       }
     },
-    [messageApi],
+    [messageApi, sanitizeSearchParams],
   );
 
   const handleInlineAction = useCallback(
@@ -108,6 +130,7 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
       record?: any,
       isBatch?: boolean,
       _records?: any[],
+      searchParams?: Record<string, any>,
     ) => {
       try {
         if (action?.confirm) {
@@ -125,6 +148,7 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
                 action,
                 record,
                 isBatch,
+                searchParams,
               ),
           });
           return;
@@ -136,6 +160,7 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
           action,
           record,
           isBatch,
+          searchParams,
         );
       } catch (error) {
         messageApi.error('Action failed');

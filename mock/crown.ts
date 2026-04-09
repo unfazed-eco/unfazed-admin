@@ -930,7 +930,7 @@ const crownModelDesc = {
   },
   attrs: {
     help_text:
-      'Crown Management System - Manage various types of crown information',
+      'Crown Management System - Manage various types of crown information\nCrown Management System - Manage various types of crown information\nCrown Management System - Manage various types of crown information\nCrown Management System - Manage various types of crown information\nCrown Management System - Manage various types of crown information',
     can_search: true,
     can_add: true,
     can_delete: true,

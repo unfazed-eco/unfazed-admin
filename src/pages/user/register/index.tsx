@@ -13,7 +13,7 @@ import {
 } from 'antd';
 import type { Store } from 'antd/es/form/interface';
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { register } from '@/services/api';
 import { PATH_PREFIX } from '../../../../config/constants';
 import useStyles from './styles';

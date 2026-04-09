@@ -96,6 +96,18 @@ export const useActionHandlers = ({
         const paramsToUse = hasValidSearchParams
           ? searchParams
           : currentSearchParams;
+        const {
+          current: _current,
+          pageSize: _pageSize,
+          _timestamp,
+          ...rawSearchParams
+        } = paramsToUse || {};
+        const cleanedSearchParams = Object.fromEntries(
+          Object.entries(rawSearchParams).filter(
+            ([, value]) =>
+              value !== undefined && value !== null && value !== '',
+          ),
+        ) as Record<string, any>;
 
         // Build search conditions in structured format
         const searchConditions = buildSearchConditions(paramsToUse, modelDesc);
@@ -115,6 +127,18 @@ export const useActionHandlers = ({
           Object.keys(extra).length > 0
         ) {
           payload.form_data = extra;
+        }
+
+        const inputData: Record<string, any> = { ...cleanedSearchParams };
+        if (
+          extra &&
+          typeof extra === 'object' &&
+          Object.keys(extra).length > 0
+        ) {
+          Object.assign(inputData, extra);
+        }
+        if (Object.keys(inputData).length > 0) {
+          payload.input_data = inputData;
         }
 
         const response = await executeModelAction(payload);

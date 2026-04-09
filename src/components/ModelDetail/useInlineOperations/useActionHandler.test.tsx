@@ -41,7 +41,7 @@ describe('useActionHandler', () => {
       );
 
       const action = { output: 'toast', label: 'Test Action' };
-      const record = { id: 123 };
+      const record = { id: 123, item_id: 1001, status: 1 };
 
       await act(async () => {
         await result.current.handleInlineAction(
@@ -55,7 +55,7 @@ describe('useActionHandler', () => {
       expect(api.executeModelAction).toHaveBeenCalledWith({
         name: 'crown_history',
         action: 'test_action',
-        form_data: {},
+        form_data: { id: 123, item_id: 1001, status: 1 },
         search_condition: [{ field: 'id', eq: 123 }],
       });
     });
@@ -86,6 +86,46 @@ describe('useActionHandler', () => {
         name: 'crown_history',
         action: 'batch_action',
         input_data: {},
+        search_condition: [],
+      });
+    });
+
+    it('should pass flattened search params in batch input_data', async () => {
+      (api.executeModelAction as jest.Mock).mockResolvedValue({
+        code: 0,
+        message: 'Batch success',
+      });
+
+      const { result } = renderHook(() =>
+        useActionHandler({ messageApi: mockMessageApi }),
+      );
+
+      const action = { output: 'toast', label: 'Batch Action' };
+
+      await act(async () => {
+        await result.current.handleInlineAction(
+          'crown_history',
+          'batch_action',
+          action,
+          undefined,
+          true,
+          [],
+          {
+            current: 1,
+            pageSize: 20,
+            mission_id: 9,
+            mission_name: 'abc',
+          },
+        );
+      });
+
+      expect(api.executeModelAction).toHaveBeenCalledWith({
+        name: 'crown_history',
+        action: 'batch_action',
+        input_data: {
+          mission_id: 9,
+          mission_name: 'abc',
+        },
         search_condition: [],
       });
     });

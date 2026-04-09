@@ -1,5 +1,6 @@
 import { Link } from '@umijs/max';
 import { Button, Card, Result } from 'antd';
+import React from 'react';
 
 export default () => (
   <Card variant="borderless">
