@@ -35,6 +35,14 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
   onSuccess,
 }) => {
   const isEditMode = mode === 'edit';
+  const isBackRelation =
+    relation?.relation === 'bk_fk' || relation?.relation === 'bk_o2o';
+  const relationFieldName = isBackRelation
+    ? relation?.target_field
+    : relation?.source_field;
+  const relationFieldValue = isBackRelation
+    ? mainRecord?.[relation?.source_field]
+    : mainRecord?.[relation?.target_field];
   const modalTitlePrefix = isEditMode ? 'Edit' : 'Add';
   const submitText = isEditMode ? 'Save' : 'Create';
   const successMessage = isEditMode
@@ -65,10 +73,13 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
           try {
             // Keep original record payload for update mode, then merge user changes.
             const baseData = isEditMode ? { ...(initialData || {}) } : {};
+            const relationData = relationFieldName
+              ? { [relationFieldName]: relationFieldValue }
+              : {};
             const dataToSave = {
               ...baseData,
               ...values,
-              [relation.target_field]: mainRecord[relation.source_field],
+              ...relationData,
             };
 
             if (onSubmitData) {
@@ -105,8 +116,10 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
       >
         {Object.entries(inlineDesc?.fields || {}).map(
           ([fieldName, fieldConfig]: [string, any]) => {
-            // Skip the FK field (it will be set automatically)
-            if (fieldName === relation.target_field) return null;
+            // Skip the relation field (it will be set automatically).
+            if (relationFieldName && fieldName === relationFieldName) {
+              return null;
+            }
             // Skip readonly fields and hidden fields
             if (fieldConfig.readonly || fieldConfig.show === false) return null;
 

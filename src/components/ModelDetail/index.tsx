@@ -468,6 +468,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
           const inlineDesc = inlineDescs[inlineName];
           const relation = inlineDesc?.relation;
           if (relation?.relation !== 'bk_fk') return null;
+          if (inlineDesc?.attrs?.can_batch_save !== true) return null;
 
           return (
             <BackRelationBatchAddModal

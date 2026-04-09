@@ -214,6 +214,8 @@ export const useInlineTabRenderer = ({
             inlineName,
             inlineDesc,
           );
+          const isFk = relationType === 'fk';
+          const canAdd = inlineDesc?.attrs?.can_add === true;
 
           return (
             <Card>
@@ -262,6 +264,15 @@ export const useInlineTabRenderer = ({
                     setOperationLoading(false);
                   }
                 }}
+                onAddRelated={
+                  isFk && canAdd
+                    ? () =>
+                        setBackRelationAddModalVisible((prev) => ({
+                          ...prev,
+                          [inlineName]: true,
+                        }))
+                    : undefined
+                }
                 actionRef={
                   {
                     get current() {
@@ -301,6 +312,13 @@ export const useInlineTabRenderer = ({
           const isTargetFieldNullable =
             inlineDesc.relation?.target_field_nullable !== false;
           const isBkFk = relationType === 'bk_fk';
+          // Only bk_fk inline should honor can_add/can_delete here.
+          // bk_o2o keeps existing behavior unchanged.
+          const canAdd = isBkFk ? inlineDesc?.attrs?.can_add !== false : true;
+          const canDelete = isBkFk
+            ? inlineDesc?.attrs?.can_delete !== false
+            : true;
+          const canBatchSave = inlineDesc?.attrs?.can_batch_save === true;
           const previewRows = previewInlineData[inlineName];
           const safePreviewRows = Array.isArray(previewRows) ? previewRows : [];
           const hasPreviewRows = isBkFk && safePreviewRows.length > 0;
@@ -350,7 +368,7 @@ export const useInlineTabRenderer = ({
                 }}
                 // Unlink button - only show when target_field is nullable
                 onUnlink={
-                  isTargetFieldNullable
+                  isTargetFieldNullable && canDelete
                     ? async (unlinkRecord: any) => {
                         setOperationLoading(true);
                         try {
@@ -368,7 +386,7 @@ export const useInlineTabRenderer = ({
                 }
                 // Link button - only show when target_field is nullable
                 onLink={
-                  isTargetFieldNullable
+                  isTargetFieldNullable && canAdd
                     ? () =>
                         setBackRelationModalVisible((prev) => ({
                           ...prev,
@@ -378,7 +396,7 @@ export const useInlineTabRenderer = ({
                 }
                 // Add button - only show when target_field is NOT nullable
                 onAddRelated={
-                  !isTargetFieldNullable
+                  !isTargetFieldNullable && canAdd
                     ? () =>
                         setBackRelationAddModalVisible((prev) => ({
                           ...prev,
@@ -387,7 +405,7 @@ export const useInlineTabRenderer = ({
                     : undefined
                 }
                 onBatchAddRelated={
-                  isBkFk && !isTargetFieldNullable
+                  isBkFk && !isTargetFieldNullable && canAdd && canBatchSave
                     ? () =>
                         setBackRelationBatchAddModalVisible((prev) => ({
                           ...prev,
@@ -397,7 +415,7 @@ export const useInlineTabRenderer = ({
                 }
                 // Delete button - only show when target_field is NOT nullable
                 onDeleteRelated={
-                  !isTargetFieldNullable
+                  !isTargetFieldNullable && canDelete
                     ? async (deleteRecord: any) => {
                         if (hasPreviewRows) {
                           setPreviewInlineData((prev) => ({
