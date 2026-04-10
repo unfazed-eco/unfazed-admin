@@ -69,8 +69,8 @@ export async function getInitialState(): Promise<{
         // 分离ProLayout需要的字段和应用级别的字段
         const layoutSettings = {
           // ProLayout直接支持的字段
-          title: apiData.title,
-          logo: apiData.logo,
+          title: apiData.title || defaultSettings.title,
+          logo: apiData.logo || defaultSettings.logo,
           navTheme: apiData.navTheme,
           colorPrimary: apiData.colorPrimary,
           layout: apiData.layout,
