@@ -15,18 +15,23 @@ const mockRenderJsonField = jest.fn(() => jest.fn(() => 'json'));
 const mockRenderTextRangeFormItem = jest.fn(() => null);
 
 jest.mock('./columnRenderers', () => ({
-  renderBooleanField: (...args: any[]) => mockRenderBooleanField(...args),
-  renderChoiceField: (...args: any[]) => mockRenderChoiceField(...args),
-  renderDateField: (...args: any[]) => mockRenderDateField(...args),
-  renderDatetimeField: (...args: any[]) => mockRenderDatetimeField(...args),
-  renderEditorField: (...args: any[]) => mockRenderEditorField(...args),
-  renderImageField: (...args: any[]) => mockRenderImageField(...args),
-  renderJsonField: (...args: any[]) => mockRenderJsonField(...args),
-  renderNumberField: (...args: any[]) => mockRenderNumberField(...args),
-  renderTextField: (...args: any[]) => mockRenderTextField(...args),
+  renderBooleanField: (...args: any[]) =>
+    (mockRenderBooleanField as any)(...args),
+  renderChoiceField: (...args: any[]) =>
+    (mockRenderChoiceField as any)(...args),
+  renderDateField: (...args: any[]) => (mockRenderDateField as any)(...args),
+  renderDatetimeField: (...args: any[]) =>
+    (mockRenderDatetimeField as any)(...args),
+  renderEditorField: (...args: any[]) =>
+    (mockRenderEditorField as any)(...args),
+  renderImageField: (...args: any[]) => (mockRenderImageField as any)(...args),
+  renderJsonField: (...args: any[]) => (mockRenderJsonField as any)(...args),
+  renderNumberField: (...args: any[]) =>
+    (mockRenderNumberField as any)(...args),
+  renderTextField: (...args: any[]) => (mockRenderTextField as any)(...args),
   renderTextRangeFormItem: (...args: any[]) =>
-    mockRenderTextRangeFormItem(...args),
-  renderTimeField: (...args: any[]) => mockRenderTimeField(...args),
+    (mockRenderTextRangeFormItem as any)(...args),
+  renderTimeField: (...args: any[]) => (mockRenderTimeField as any)(...args),
 }));
 
 describe('useColumnGenerator', () => {

@@ -54,7 +54,6 @@ describe('global runtime bootstrap', () => {
         };
       }
     }
-    // @ts-expect-error
     global.MessageChannel = MockChannel;
 
     jest.doMock('../config/defaultSettings', () => ({
