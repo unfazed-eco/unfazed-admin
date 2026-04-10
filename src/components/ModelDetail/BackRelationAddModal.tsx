@@ -6,6 +6,12 @@ import { renderFormField } from '@/utils/formFieldRenderer';
 
 interface BackRelationAddModalProps {
   visible: boolean;
+  mode?: 'create' | 'edit';
+  initialData?: Record<string, any> | null;
+  onSubmitData?: (
+    data: Record<string, any>,
+    mode: 'create' | 'edit',
+  ) => Promise<void> | void;
   inlineName: string;
   inlineDesc: any;
   relation: any;
@@ -17,6 +23,9 @@ interface BackRelationAddModalProps {
 
 const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
   visible,
+  mode = 'create',
+  initialData,
+  onSubmitData,
   inlineName,
   inlineDesc,
   relation,
@@ -25,10 +34,26 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const isEditMode = mode === 'edit';
+  const isBackRelation =
+    relation?.relation === 'bk_fk' || relation?.relation === 'bk_o2o';
+  const relationFieldName = isBackRelation
+    ? relation?.target_field
+    : relation?.source_field;
+  const relationFieldValue = isBackRelation
+    ? mainRecord?.[relation?.source_field]
+    : mainRecord?.[relation?.target_field];
+  const modalTitlePrefix = isEditMode ? 'Edit' : 'Add';
+  const submitText = isEditMode ? 'Save' : 'Create';
+  const successMessage = isEditMode
+    ? 'Updated successfully'
+    : 'Created successfully';
+  const failedMessage = isEditMode ? 'Update failed' : 'Create failed';
+
   return (
     <Modal
       open={visible}
-      title={`Add ${inlineDesc?.attrs?.label || inlineName}`}
+      title={`${modalTitlePrefix} ${inlineDesc?.attrs?.label || inlineName}`}
       width={800}
       destroyOnClose
       onCancel={onClose}
@@ -43,13 +68,26 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
         layout="horizontal"
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
+        initialValues={isEditMode ? initialData || {} : undefined}
         onFinish={async (values) => {
           try {
-            // Add the FK field value to link to main record
+            // Keep original record payload for update mode, then merge user changes.
+            const baseData = isEditMode ? { ...(initialData || {}) } : {};
+            const relationData = relationFieldName
+              ? { [relationFieldName]: relationFieldValue }
+              : {};
             const dataToSave = {
+              ...baseData,
               ...values,
-              [relation.target_field]: mainRecord[relation.source_field],
+              ...relationData,
             };
+
+            if (onSubmitData) {
+              await onSubmitData(dataToSave, mode);
+              onClose();
+              onSuccess();
+              return;
+            }
 
             const response = await saveModelData({
               name: inlineName,
@@ -57,20 +95,20 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
             });
 
             if (response?.code === 0) {
-              messageApi.success('Created successfully');
+              messageApi.success(successMessage);
               onClose();
               onSuccess();
             } else {
-              messageApi.error(response?.message || 'Create failed');
+              messageApi.error(response?.message || failedMessage);
             }
           } catch (error) {
-            messageApi.error('Create failed');
-            console.error('Create error:', error);
+            messageApi.error(failedMessage);
+            console.error(`${mode} error:`, error);
           }
         }}
         submitter={{
           searchConfig: {
-            submitText: 'Create',
+            submitText,
             resetText: 'Cancel',
           },
           onReset: onClose,
@@ -78,8 +116,10 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
       >
         {Object.entries(inlineDesc?.fields || {}).map(
           ([fieldName, fieldConfig]: [string, any]) => {
-            // Skip the FK field (it will be set automatically)
-            if (fieldName === relation.target_field) return null;
+            // Skip the relation field (it will be set automatically).
+            if (relationFieldName && fieldName === relationFieldName) {
+              return null;
+            }
             // Skip readonly fields and hidden fields
             if (fieldConfig.readonly || fieldConfig.show === false) return null;
 

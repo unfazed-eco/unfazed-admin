@@ -4,6 +4,8 @@ import React, { useCallback, useRef } from 'react';
 import { CommonProTable } from '../index';
 import type {
   InlineActionRefsMap,
+  InlinePreviewDataState,
+  ModalRecordState,
   ModalVisibilityState,
   ReloadTimestampMap,
 } from './types';
@@ -21,6 +23,7 @@ interface InlineTabRendererProps {
     actionRecord?: any,
     isBatch?: boolean,
     records?: any[],
+    searchParams?: Record<string, any>,
   ) => void;
   handleInlineSave: (
     inlineName: string,
@@ -50,6 +53,16 @@ interface InlineTabRendererProps {
   setBackRelationAddModalVisible: React.Dispatch<
     React.SetStateAction<ModalVisibilityState>
   >;
+  setBackRelationBatchAddModalVisible: React.Dispatch<
+    React.SetStateAction<ModalVisibilityState>
+  >;
+  setBackRelationEditModalRecord: React.Dispatch<
+    React.SetStateAction<ModalRecordState>
+  >;
+  previewInlineData: InlinePreviewDataState;
+  setPreviewInlineData: React.Dispatch<
+    React.SetStateAction<InlinePreviewDataState>
+  >;
   setOperationLoading: React.Dispatch<React.SetStateAction<boolean>>;
   inlineActionRefs: React.MutableRefObject<InlineActionRefsMap>;
 }
@@ -68,6 +81,10 @@ export const useInlineTabRenderer = ({
   setM2MModalVisible,
   setBackRelationModalVisible,
   setBackRelationAddModalVisible,
+  setBackRelationBatchAddModalVisible,
+  setBackRelationEditModalRecord,
+  previewInlineData,
+  setPreviewInlineData,
   setOperationLoading,
   inlineActionRefs,
 }: InlineTabRendererProps) => {
@@ -142,6 +159,7 @@ export const useInlineTabRenderer = ({
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -150,6 +168,7 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 onUnlink={async (unlinkRecord: any) => {
@@ -198,6 +217,8 @@ export const useInlineTabRenderer = ({
             inlineName,
             inlineDesc,
           );
+          const isFk = relationType === 'fk';
+          const canAdd = inlineDesc?.attrs?.can_add === true;
 
           return (
             <Card>
@@ -218,6 +239,7 @@ export const useInlineTabRenderer = ({
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -226,6 +248,7 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 onSave={async (saveRecord: any) => {
@@ -246,6 +269,15 @@ export const useInlineTabRenderer = ({
                     setOperationLoading(false);
                   }
                 }}
+                onAddRelated={
+                  isFk && canAdd
+                    ? () =>
+                        setBackRelationAddModalVisible((prev) => ({
+                          ...prev,
+                          [inlineName]: true,
+                        }))
+                    : undefined
+                }
                 actionRef={
                   {
                     get current() {
@@ -284,6 +316,30 @@ export const useInlineTabRenderer = ({
           // When nullable=true: show Link + Unlink buttons (can link/unlink existing records)
           const isTargetFieldNullable =
             inlineDesc.relation?.target_field_nullable !== false;
+          const isBkFk = relationType === 'bk_fk';
+          // Only bk_fk inline should honor can_add/can_delete here.
+          // bk_o2o keeps existing behavior unchanged.
+          const canAdd = isBkFk ? inlineDesc?.attrs?.can_add !== false : true;
+          const canDelete = isBkFk
+            ? inlineDesc?.attrs?.can_delete !== false
+            : true;
+          const canBatchSave = inlineDesc?.attrs?.can_batch_save === true;
+          const previewRows = previewInlineData[inlineName];
+          const safePreviewRows = Array.isArray(previewRows) ? previewRows : [];
+          const hasPreviewRows = isBkFk && safePreviewRows.length > 0;
+          // bk_fk supports popup edit; bk_o2o keeps read-only behavior.
+          const canPopupEdit =
+            relationType === 'bk_fk' && inlineDesc?.attrs?.can_edit === true;
+          const handlePreviewAwareRequest = async (params: any) => {
+            if (hasPreviewRows) {
+              return {
+                data: safePreviewRows,
+                total: safePreviewRows.length,
+                success: true,
+              };
+            }
+            return handleRequest(params);
+          };
 
           return (
             <Card>
@@ -293,18 +349,19 @@ export const useInlineTabRenderer = ({
                   attrs: {
                     ...inlineDesc.attrs,
                     can_add: false, // Disable Add button for back relation tables
-                    can_edit: false, // Disable Edit button for back relation tables
+                    can_edit: false,
                     can_delete: false, // Disable Delete button, use Unlink instead
                   },
                 }}
                 modelName={inlineName}
-                onRequest={handleRequest}
+                onRequest={handlePreviewAwareRequest}
                 onAction={(
                   actionKey: string,
                   action: any,
                   actionRecord?: any,
                   isBatch?: boolean,
                   records?: any[],
+                  searchParams?: Record<string, any>,
                 ) => {
                   handleInlineAction(
                     inlineName,
@@ -313,11 +370,12 @@ export const useInlineTabRenderer = ({
                     actionRecord,
                     isBatch,
                     records,
+                    searchParams,
                   );
                 }}
                 // Unlink button - only show when target_field is nullable
                 onUnlink={
-                  isTargetFieldNullable
+                  isTargetFieldNullable && canDelete
                     ? async (unlinkRecord: any) => {
                         setOperationLoading(true);
                         try {
@@ -335,7 +393,7 @@ export const useInlineTabRenderer = ({
                 }
                 // Link button - only show when target_field is nullable
                 onLink={
-                  isTargetFieldNullable
+                  isTargetFieldNullable && canAdd
                     ? () =>
                         setBackRelationModalVisible((prev) => ({
                           ...prev,
@@ -345,7 +403,7 @@ export const useInlineTabRenderer = ({
                 }
                 // Add button - only show when target_field is NOT nullable
                 onAddRelated={
-                  !isTargetFieldNullable
+                  !isTargetFieldNullable && canAdd
                     ? () =>
                         setBackRelationAddModalVisible((prev) => ({
                           ...prev,
@@ -353,10 +411,30 @@ export const useInlineTabRenderer = ({
                         }))
                     : undefined
                 }
+                onBatchAddRelated={
+                  isBkFk && !isTargetFieldNullable && canAdd && canBatchSave
+                    ? () =>
+                        setBackRelationBatchAddModalVisible((prev) => ({
+                          ...prev,
+                          [inlineName]: true,
+                        }))
+                    : undefined
+                }
                 // Delete button - only show when target_field is NOT nullable
                 onDeleteRelated={
-                  !isTargetFieldNullable
+                  !isTargetFieldNullable && canDelete
                     ? async (deleteRecord: any) => {
+                        if (hasPreviewRows) {
+                          setPreviewInlineData((prev) => ({
+                            ...prev,
+                            [inlineName]: (prev[inlineName] || []).filter(
+                              (item) => item.id !== deleteRecord.id,
+                            ),
+                          }));
+                          debouncedReload(inlineName);
+                          return;
+                        }
+
                         setOperationLoading(true);
                         try {
                           await handleInlineDelete(inlineName, deleteRecord);
@@ -365,6 +443,15 @@ export const useInlineTabRenderer = ({
                           setOperationLoading(false);
                         }
                       }
+                    : undefined
+                }
+                onEditRelated={
+                  canPopupEdit && !hasPreviewRows
+                    ? (editRecord: any) =>
+                        setBackRelationEditModalRecord((prev) => ({
+                          ...prev,
+                          [inlineName]: editRecord,
+                        }))
                     : undefined
                 }
                 // bk_o2o can always open modal to change the linked record
@@ -428,6 +515,10 @@ export const useInlineTabRenderer = ({
       setM2MModalVisible,
       setBackRelationModalVisible,
       setBackRelationAddModalVisible,
+      setBackRelationBatchAddModalVisible,
+      setBackRelationEditModalRecord,
+      previewInlineData,
+      setPreviewInlineData,
       setOperationLoading,
     ],
   );

@@ -19,10 +19,18 @@ jest.mock('@ant-design/pro-components', () => {
   const originalModule = jest.requireActual('@ant-design/pro-components');
   return {
     ...originalModule,
-    ProTable: ({ columns, dataSource, ...props }: any) => {
+    ProTable: ({ columns, dataSource, toolBarRender, ...props }: any) => {
+      const toolbar = toolBarRender?.();
       return React.createElement(
         'div',
         { 'data-testid': 'pro-table', ...props },
+        toolbar
+          ? React.createElement(
+              'div',
+              { 'data-testid': 'toolbar' },
+              ...(Array.isArray(toolbar) ? toolbar : [toolbar]),
+            )
+          : null,
         React.createElement(
           'table',
           null,
@@ -363,6 +371,30 @@ describe('CommonProTable', () => {
 
       // hidden_field has show: false, should not appear
       expect(screen.queryByTestId('column-hidden_field')).toBeNull();
+    });
+  });
+
+  describe('batch add button', () => {
+    it('should render Batch Add button and trigger callback when clicked', () => {
+      const onBatchAddRelated = jest.fn();
+
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={mockData}
+          onAddRelated={jest.fn()}
+          onBatchAddRelated={onBatchAddRelated}
+        />,
+      );
+
+      const batchAddButton = screen.getByRole('button', {
+        name: /Batch Add/,
+      });
+      expect(batchAddButton).toBeTruthy();
+
+      batchAddButton.click();
+      expect(onBatchAddRelated).toHaveBeenCalledTimes(1);
     });
   });
 });

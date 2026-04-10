@@ -83,15 +83,34 @@ const M2MSelectionModal: React.FC<M2MSelectionModalProps> = ({
     selectedRowKeys,
     preserveSelectedRowKeys: true,
     onChange: (newSelectedRowKeys: React.Key[], newSelectedRows: any[]) => {
-      setSelectedRowKeys(newSelectedRowKeys);
+      const safeSelectedRowKeys = Array.isArray(newSelectedRowKeys)
+        ? newSelectedRowKeys
+        : [];
+      setSelectedRowKeys(safeSelectedRowKeys);
       // Merge new selections with existing ones (for pagination support)
       setSelectedRows((prevRows) => {
-        const existingIds = new Set(prevRows.map((r) => r.id));
-        const newRows = newSelectedRows.filter((r) => !existingIds.has(r.id));
-        const keptRows = prevRows.filter((r) =>
-          newSelectedRowKeys.includes(r.id),
+        const safePrevRows = (Array.isArray(prevRows) ? prevRows : []).filter(
+          (r) =>
+            r !== null &&
+            r !== undefined &&
+            r.id !== null &&
+            r.id !== undefined,
         );
-        return [...keptRows, ...newRows];
+        const existingIds = new Set(safePrevRows.map((r) => r.id));
+        const safeNewRows = (
+          Array.isArray(newSelectedRows) ? newSelectedRows : []
+        ).filter(
+          (r) =>
+            r !== null &&
+            r !== undefined &&
+            r.id !== null &&
+            r.id !== undefined &&
+            !existingIds.has(r.id),
+        );
+        const keptRows = safePrevRows.filter((r) =>
+          safeSelectedRowKeys.includes(r.id),
+        );
+        return [...keptRows, ...safeNewRows];
       });
     },
     getCheckboxProps: (record: any) => ({

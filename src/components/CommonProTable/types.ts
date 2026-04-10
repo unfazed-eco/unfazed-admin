@@ -34,8 +34,12 @@ export interface CommonProTableProps {
   linkDisabled?: boolean;
   /** Add related record callback (for bk_fk/bk_o2o relations, opens add modal) */
   onAddRelated?: () => void;
+  /** Batch add related records callback (for bk_fk inline paste flow) */
+  onBatchAddRelated?: () => void;
   /** Delete related record callback (for bk_fk/bk_o2o relations, permanently deletes) */
   onDeleteRelated?: (record: Record<string, any>) => Promise<void>;
+  /** Edit related record callback (for popup edit flows, e.g. bk_fk) */
+  onEditRelated?: (record: Record<string, any>) => void;
   /** Data request function (used when data is not provided) */
   onRequest?: (
     params: any,

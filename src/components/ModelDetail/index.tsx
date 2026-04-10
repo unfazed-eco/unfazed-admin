@@ -3,15 +3,29 @@ import type { ProFormInstance } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
 import { Button, Modal, Spin, Tabs } from 'antd';
-import React, { useCallback, useRef, useState } from 'react';
-import { deleteModelData, getModelInlines } from '@/services/api';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  batchSaveModelData,
+  deleteModelData,
+  getModelInlines,
+} from '@/services/api';
 import BackRelationAddModal from './BackRelationAddModal';
+import BackRelationBatchAddModal from './BackRelationBatchAddModal';
 import BackRelationSelectionModal from './BackRelationSelectionModal';
 import { useInlineTabRenderer } from './InlineTabRenderer';
 import M2MSelectionModal from './M2MSelectionModal';
 import MainFormTab from './MainFormTab';
 import type {
   InlineActionRefsMap,
+  InlineBatchLoadingState,
+  InlinePreviewDataState,
+  ModalRecordState,
   ModalVisibilityState,
   ModelDetailProps,
 } from './types';
@@ -29,7 +43,30 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
 
   // Check if create mode
   const isCreateMode = record.id === -1;
-  const [hasMainDataSaved, _setHasMainDataSaved] = useState(!isCreateMode);
+  const defaultMainValues = useMemo(() => {
+    const defaults: Record<string, any> = {};
+    Object.entries(modelDesc?.fields || {}).forEach(
+      ([fieldName, fieldConfig]) => {
+        if (
+          fieldConfig?.default !== undefined &&
+          fieldConfig?.default !== null
+        ) {
+          defaults[fieldName] = fieldConfig.default;
+        }
+      },
+    );
+    return defaults;
+  }, [modelDesc]);
+  const initialMainData = useMemo(
+    () => ({ ...defaultMainValues, ...record }),
+    [defaultMainValues, record],
+  );
+  const [mainRecordData, setMainRecordData] =
+    useState<Record<string, any>>(initialMainData);
+
+  useEffect(() => {
+    setMainRecordData(initialMainData);
+  }, [initialMainData]);
 
   // Check if editing is allowed
   const canEdit = modelDesc.attrs.can_edit !== false;
@@ -49,7 +86,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     handleBackRelationLink,
     handleBackRelationUnlink,
     addInlineRecord,
-  } = useInlineOperations({ mainRecord: record });
+  } = useInlineOperations({ mainRecord: mainRecordData });
 
   // State management
   const [activeTab, setActiveTab] = useState('main');
@@ -61,15 +98,73 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     useState<ModalVisibilityState>({});
   const [backRelationAddModalVisible, setBackRelationAddModalVisible] =
     useState<ModalVisibilityState>({});
+  const [
+    backRelationBatchAddModalVisible,
+    setBackRelationBatchAddModalVisible,
+  ] = useState<ModalVisibilityState>({});
+  const [backRelationEditModalRecord, setBackRelationEditModalRecord] =
+    useState<ModalRecordState>({});
+  const [previewInlineData, setPreviewInlineData] =
+    useState<InlinePreviewDataState>({});
+  const [batchSaveLoading, setBatchSaveLoading] =
+    useState<InlineBatchLoadingState>({});
   const [linkLoading, setLinkLoading] = useState(false);
   // Global loading state for inline operations
   const [operationLoading, setOperationLoading] = useState(false);
   // Action refs for inline tables to enable reload
   const inlineActionRefs = useRef<InlineActionRefsMap>({});
 
+  const handleBatchSave = useCallback(
+    async (inlineName: string, relation: any, rows: Record<string, any>[]) => {
+      const sourceValue = relation
+        ? mainRecordData?.[relation.source_field as string]
+        : undefined;
+      const payloadList = rows.map((row) => {
+        const next = { ...(row || {}) };
+        if (relation?.target_field) {
+          next[relation.target_field] = sourceValue;
+        }
+        // For batch create rows, always send id = -1 instead of omitting id.
+        if (typeof next.id !== 'number' || next.id <= 0) {
+          next.id = -1;
+        }
+        delete (next as any).key;
+        return next;
+      });
+
+      setBatchSaveLoading((prev) => ({ ...prev, [inlineName]: true }));
+      try {
+        const response = await batchSaveModelData({
+          name: inlineName,
+          data: payloadList,
+        });
+        if (response?.code === 0) {
+          messageApi.success('Batch saved successfully');
+          setPreviewInlineData((prev) => ({
+            ...prev,
+            [inlineName]: undefined,
+          }));
+          setBackRelationBatchAddModalVisible((prev) => ({
+            ...prev,
+            [inlineName]: false,
+          }));
+          inlineActionRefs.current[inlineName]?.reload?.();
+        } else {
+          messageApi.error(response?.message || 'Batch save failed');
+        }
+      } catch (error) {
+        messageApi.error('Batch save failed');
+        console.error('Batch save error:', error);
+      } finally {
+        setBatchSaveLoading((prev) => ({ ...prev, [inlineName]: false }));
+      }
+    },
+    [mainRecordData, messageApi],
+  );
+
   // Use inline tab renderer hook
   const { renderInlineComponent, debouncedReload } = useInlineTabRenderer({
-    record,
+    record: mainRecordData,
     inlineDescs,
     loadedTabs,
     editingKeys,
@@ -82,6 +177,10 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     setM2MModalVisible,
     setBackRelationModalVisible,
     setBackRelationAddModalVisible,
+    setBackRelationBatchAddModalVisible,
+    setBackRelationEditModalRecord,
+    previewInlineData,
+    setPreviewInlineData,
     setOperationLoading,
     inlineActionRefs,
   });
@@ -97,8 +196,8 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     {
       manual: false,
       onSuccess: (resp: any) => {
-        if (formRef.current && record) {
-          formRef.current.setFieldsValue(record);
+        if (formRef.current) {
+          formRef.current.setFieldsValue(initialMainData);
         }
         setInlineDescs(resp || {});
       },
@@ -108,13 +207,6 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   // Handle tab change
   const handleTabChange = useCallback(
     (key: string) => {
-      if (key !== 'main' && !hasMainDataSaved) {
-        messageApi.warning(
-          'Please save the main data first before accessing related data',
-        );
-        return;
-      }
-
       setActiveTab(key);
 
       // Mark tab as loaded (CommonProTable's onRequest will handle data fetching)
@@ -122,7 +214,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         markTabLoaded(key);
       }
     },
-    [loadedTabs, hasMainDataSaved, messageApi, markTabLoaded],
+    [loadedTabs, markTabLoaded],
   );
 
   // Delete main record
@@ -163,25 +255,25 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         <MainFormTab
           modelName={modelName}
           modelDesc={modelDesc}
-          record={record}
+          record={mainRecordData}
           formRef={formRef}
           canEdit={canEdit}
           isCreateMode={isCreateMode}
           messageApi={messageApi}
           onBack={onBack}
+          onValuesChange={(values) => {
+            setMainRecordData((prev) => ({ ...prev, ...values }));
+          }}
         />
       ),
     },
-    // Only show inline tabs when main data is saved
-    ...(hasMainDataSaved
-      ? Object.keys(inlineDescs).map((inlineName) => ({
-          key: inlineName,
-          label:
-            inlineDescs[inlineName]?.attrs?.label ||
-            capitalizeFirstLetter(inlineName),
-          children: renderInlineComponent(inlineName),
-        }))
-      : []),
+    ...Object.keys(inlineDescs).map((inlineName) => ({
+      key: inlineName,
+      label:
+        inlineDescs[inlineName]?.attrs?.label ||
+        capitalizeFirstLetter(inlineName),
+      children: renderInlineComponent(inlineName),
+    })),
   ];
 
   return (
@@ -234,7 +326,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             title={inlineDesc.attrs?.verbose_name || inlineName}
             modelDesc={inlineDesc}
             relation={relation}
-            mainRecordId={record[relation.through.source_field]}
+            mainRecordId={mainRecordData[relation.through.source_field]}
             onCancel={() => {
               setM2MModalVisible((prev) => ({ ...prev, [inlineName]: false }));
             }}
@@ -288,7 +380,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             modelName={inlineName}
             modelDesc={inlineDesc}
             relation={relation}
-            mainRecordId={record.id}
+            mainRecordId={mainRecordData.id}
             isSingleSelect={isBkO2O}
             loading={linkLoading}
             onCancel={() => {
@@ -348,10 +440,11 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
             <BackRelationAddModal
               key={`add-${inlineName}`}
               visible={visible}
+              mode="create"
               inlineName={inlineName}
               inlineDesc={inlineDesc}
               relation={relation}
-              mainRecord={record}
+              mainRecord={mainRecordData}
               messageApi={messageApi}
               onClose={() => {
                 setBackRelationAddModalVisible((prev) => ({
@@ -360,6 +453,82 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                 }));
               }}
               onSuccess={() => {
+                debouncedReload(inlineName);
+              }}
+            />
+          );
+        },
+      )}
+
+      {/* Back relation (bk_fk) batch add modals - for batch paste/preview/save */}
+      {Object.entries(backRelationBatchAddModalVisible).map(
+        ([inlineName, visible]) => {
+          if (!visible || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc?.relation;
+          if (relation?.relation !== 'bk_fk') return null;
+          if (inlineDesc?.attrs?.can_batch_save !== true) return null;
+
+          return (
+            <BackRelationBatchAddModal
+              key={`batch-add-${inlineName}`}
+              visible={visible}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              messageApi={messageApi}
+              batchSaveLoading={batchSaveLoading[inlineName]}
+              onPreview={(rows) => {
+                setPreviewInlineData((prev) => ({
+                  ...prev,
+                  [inlineName]: rows,
+                }));
+              }}
+              onBatchSave={(rows) =>
+                handleBatchSave(inlineName, relation, rows)
+              }
+              onClose={() => {
+                setBackRelationBatchAddModalVisible((prev) => ({
+                  ...prev,
+                  [inlineName]: false,
+                }));
+              }}
+            />
+          );
+        },
+      )}
+
+      {/* Back relation (bk_fk) edit modals - for editing existing related records */}
+      {Object.entries(backRelationEditModalRecord).map(
+        ([inlineName, editRecord]) => {
+          if (!editRecord || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc.relation;
+
+          return (
+            <BackRelationAddModal
+              key={`edit-${inlineName}-${editRecord.id || 'record'}`}
+              visible={true}
+              mode="edit"
+              initialData={editRecord}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              mainRecord={mainRecordData}
+              messageApi={messageApi}
+              onClose={() => {
+                setBackRelationEditModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+              }}
+              onSuccess={() => {
+                setBackRelationEditModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
                 debouncedReload(inlineName);
               }}
             />

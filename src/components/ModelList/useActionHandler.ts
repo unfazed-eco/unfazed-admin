@@ -3,6 +3,7 @@
  */
 
 import type { ActionType } from '@ant-design/pro-components';
+import { Modal } from 'antd';
 import { useCallback, useRef, useState } from 'react';
 import { showDisplayModal } from './DisplayModal';
 import type { CurrentAction } from './types';
@@ -99,6 +100,51 @@ export const useActionHandler = ({
     [executeBatchAction, executeRowAction, modelDesc, actionRef],
   );
 
+  const executeActionWithConfirm = useCallback(
+    (
+      actionKey: string,
+      actionConfig: any,
+      record?: Record<string, any>,
+      isBatch = false,
+      records: Record<string, any>[] = [],
+      extra?: any,
+      searchParams?: Record<string, any>,
+    ) => {
+      if (!actionConfig?.confirm) {
+        executeAction(
+          actionKey,
+          actionConfig,
+          record,
+          isBatch,
+          records,
+          extra,
+          searchParams,
+        );
+        return;
+      }
+
+      Modal.confirm({
+        title: actionConfig.label || actionConfig.name || actionKey,
+        content:
+          actionConfig.description ||
+          'Are you sure you want to execute this action?',
+        okText: 'Confirm',
+        cancelText: 'Cancel',
+        onOk: () =>
+          executeAction(
+            actionKey,
+            actionConfig,
+            record,
+            isBatch,
+            records,
+            extra,
+            searchParams,
+          ),
+      });
+    },
+    [executeAction],
+  );
+
   // Trigger action (based on input type)
   const triggerAction = useCallback(
     (
@@ -137,7 +183,7 @@ export const useActionHandler = ({
           break;
         default:
           // Execute directly
-          executeAction(
+          executeActionWithConfirm(
             actionKey,
             actionConfig,
             record,
@@ -149,7 +195,7 @@ export const useActionHandler = ({
           break;
       }
     },
-    [executeAction],
+    [executeActionWithConfirm],
   );
 
   // String input modal confirm handler
@@ -157,7 +203,7 @@ export const useActionHandler = ({
     (inputValue: string) => {
       if (currentAction) {
         const extra = { input: inputValue };
-        executeAction(
+        executeActionWithConfirm(
           currentAction.actionKey,
           currentAction.actionConfig,
           currentAction.record,
@@ -170,7 +216,7 @@ export const useActionHandler = ({
       setStringModalVisible(false);
       setCurrentAction(null);
     },
-    [currentAction, executeAction],
+    [currentAction, executeActionWithConfirm],
   );
 
   // File upload modal confirm handler
@@ -195,7 +241,7 @@ export const useActionHandler = ({
 
         Promise.all(filePromises).then((filesData) => {
           const extra = { files: filesData };
-          executeAction(
+          executeActionWithConfirm(
             currentAction.actionKey,
             currentAction.actionConfig,
             currentAction.record,
@@ -209,7 +255,7 @@ export const useActionHandler = ({
       setFileModalVisible(false);
       setCurrentAction(null);
     },
-    [currentAction, executeAction],
+    [currentAction, executeActionWithConfirm],
   );
 
   // Modal cancel handler

@@ -25,7 +25,13 @@ import { LinkOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { Button, Dropdown } from 'antd';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { CommonProTableProps } from './types';
 import { useColumnGenerator } from './useColumnGenerator';
 import { useTableState } from './useTableState';
@@ -42,12 +48,15 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   onLink,
   linkDisabled,
   onAddRelated,
+  onBatchAddRelated,
   onDeleteRelated,
+  onEditRelated,
   onRequest,
   tableProps = {},
   actionRef,
 }) => {
   const formRef = useRef<ProFormInstance>(null as any);
+  const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
   // Table state management
   const {
@@ -72,6 +81,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     onDelete,
     onUnlink,
     onDeleteRelated,
+    onEditRelated,
   });
 
   // Generate batch action menu items
@@ -134,6 +144,20 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
       );
     }
 
+    // Batch Add button for bk_fk inline paste flow
+    if (onBatchAddRelated) {
+      buttons.push(
+        <Button
+          key="batch-add-related"
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={onBatchAddRelated}
+        >
+          Batch Add
+        </Button>,
+      );
+    }
+
     // Standard add button
     if (modelDesc.attrs.can_add) {
       buttons.push(
@@ -149,7 +173,14 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     }
 
     return buttons;
-  }, [modelDesc, onAction, onLink, linkDisabled, onAddRelated]);
+  }, [
+    modelDesc,
+    onAction,
+    onLink,
+    linkDisabled,
+    onAddRelated,
+    onBatchAddRelated,
+  ]);
 
   const columns = useMemo(() => generateColumns(), [generateColumns]);
 
@@ -161,6 +192,49 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   const hasBatchActions = batchActions.length > 0;
   // Show search panel if can_search is not false AND (has searchable fields OR has batch actions)
   const showSearchPanel = canSearch && (hasSearchableFields || hasBatchActions);
+  const rawHelpText = modelDesc.attrs?.help_text;
+  const helpText =
+    typeof rawHelpText === 'string'
+      ? rawHelpText.trim()
+      : rawHelpText
+        ? String(rawHelpText)
+        : '';
+  const hasHelpText = helpText.length > 0;
+  const isLongHelpText = helpText.length > 160 || helpText.includes('\n');
+
+  useEffect(() => {
+    setIsHelpExpanded(false);
+  }, [helpText, modelName]);
+
+  const headerTitle = useMemo(() => {
+    if (!hasHelpText) return modelName;
+    if (!isLongHelpText) return helpText;
+
+    return (
+      <div style={{ maxWidth: 'min(720px, 100%)' }}>
+        <div
+          style={{
+            whiteSpace: 'pre-wrap',
+            lineHeight: '22px',
+            overflow: 'hidden',
+            display: isHelpExpanded ? 'block' : '-webkit-box',
+            WebkitLineClamp: isHelpExpanded ? undefined : 1,
+            WebkitBoxOrient: isHelpExpanded ? undefined : 'vertical',
+          }}
+        >
+          {helpText}
+        </div>
+        <Button
+          type="link"
+          size="small"
+          style={{ paddingLeft: 0, marginTop: 4 }}
+          onClick={() => setIsHelpExpanded((prev) => !prev)}
+        >
+          {isHelpExpanded ? 'Collapse' : 'More'}
+        </Button>
+      </div>
+    );
+  }, [hasHelpText, helpText, isLongHelpText, isHelpExpanded, modelName]);
 
   return (
     <>
@@ -180,7 +254,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
       </style>
       <ProTable<Record<string, any>>
         className="common-pro-table"
-        headerTitle={modelDesc.attrs.help_text || modelName}
+        headerTitle={headerTitle}
         actionRef={actionRef}
         formRef={formRef}
         rowKey={(record) => record.id || record.key || JSON.stringify(record)}

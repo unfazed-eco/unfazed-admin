@@ -311,6 +311,11 @@ declare namespace API {
     data: Record<string, any>;
   };
 
+  type ModelBatchSaveRequest = {
+    name: string;
+    data: Record<string, any>[];
+  };
+
   type ModelDeleteRequest = {
     name: string;
     data: Record<string, any>;

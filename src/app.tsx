@@ -12,6 +12,7 @@ import { getRouteAndMenuData } from '@/utils/routeManager';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
+import React from 'react';
 import { PATH_PREFIX } from '../config/constants';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';

@@ -3,7 +3,7 @@
  */
 
 import type { ProFormInstance } from '@ant-design/pro-components';
-import { Button } from 'antd';
+import { Button, Modal } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import React, { useCallback } from 'react';
 import type { ActionConfig } from './types';
@@ -27,22 +27,42 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   messageApi,
   executeAction,
 }) => {
+  const executeActionWithConfirm = useCallback(
+    async (actionKey: string, actionConfig: ActionConfig, formData: any) => {
+      if (!actionConfig.confirm) {
+        await executeAction(actionKey, actionConfig, formData);
+        return;
+      }
+
+      Modal.confirm({
+        title: actionConfig.label || actionConfig.name || actionKey,
+        content:
+          actionConfig.description ||
+          'Are you sure you want to execute this action?',
+        okText: 'Confirm',
+        cancelText: 'Cancel',
+        onOk: () => executeAction(actionKey, actionConfig, formData),
+      });
+    },
+    [executeAction],
+  );
+
   const handleActionClick = useCallback(
     async (actionKey: string, actionConfig: ActionConfig) => {
       if (actionConfig.input === 'empty') {
         // No form data needed
-        await executeAction(actionKey, actionConfig, {});
+        await executeActionWithConfirm(actionKey, actionConfig, {});
       } else {
         // Form data needed
         try {
           const formData = await formRef.current?.validateFields();
-          await executeAction(actionKey, actionConfig, formData);
+          await executeActionWithConfirm(actionKey, actionConfig, formData);
         } catch (_error) {
           messageApi.warning('Please fill in all required fields');
         }
       }
     },
-    [executeAction, formRef, messageApi],
+    [executeActionWithConfirm, formRef, messageApi],
   );
 
   const buttons: React.ReactNode[] = [];
