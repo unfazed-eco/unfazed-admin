@@ -1,7 +1,6 @@
 import { act, render } from '@testing-library/react';
+import * as React from 'react';
 import EditorJS from './index';
-
-const React = require('react');
 
 let capturedProps: any;
 

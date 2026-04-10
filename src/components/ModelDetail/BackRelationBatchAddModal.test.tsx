@@ -3,7 +3,7 @@ import * as React from 'react';
 import BackRelationBatchAddModal from './BackRelationBatchAddModal';
 
 jest.mock('antd', () => {
-  const React = require('react');
+  const _React = require('react');
   return {
     Button: ({ children, onClick, ...rest }: any) => (
       <button type="button" onClick={onClick} {...rest}>
