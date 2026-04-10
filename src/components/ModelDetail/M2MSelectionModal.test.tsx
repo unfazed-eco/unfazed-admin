@@ -139,8 +139,18 @@ describe('M2MSelectionModal', () => {
     render(React.createElement(M2MSelectionModal, baseProps));
 
     // selection merge across pages
-    capturedTableProps.rowSelection.onChange([1], [{ id: 1, name: 'A' }]);
-    capturedTableProps.rowSelection.onChange([1, 2], [{ id: 2, name: 'B' }]);
+    act(() => {
+      capturedTableProps.rowSelection.onChange([1], [{ id: 1, name: 'A' }]);
+      capturedTableProps.rowSelection.onChange([1, 2], [{ id: 2, name: 'B' }]);
+    });
+    expect(() =>
+      act(() => {
+        capturedTableProps.rowSelection.onChange(
+          [1, 2],
+          [undefined, null, { id: 2, name: 'B2' }],
+        );
+      }),
+    ).not.toThrow();
 
     expect(
       capturedTableProps.rowSelection.getCheckboxProps({ name: 'X' }),
