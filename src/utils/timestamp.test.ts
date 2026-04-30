@@ -18,6 +18,7 @@ describe('timestamp utils', () => {
 
     expect(isNumericTimestamp(1700000000)).toBe(true);
     expect(isNumericTimestamp('1700000000')).toBe(true);
+    expect(isNumericTimestamp(Number.NaN)).toBe(false);
     expect(isNumericTimestamp('2026-01-01')).toBe(false);
   });
 
@@ -41,6 +42,13 @@ describe('timestamp utils', () => {
     expect(toUnixTimestamp(new Date('2026-01-01T00:00:00Z'))).toBe(
       Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000),
     );
+  });
+
+  it('returns null for invalid datetime values', () => {
+    expect(toUnixTimestamp('bad-date')).toBeNull();
+    expect(toUnixTimestamp(Number.NaN)).toBeNull();
+    expect(toUnixTimestamp(new Date('bad-date'))).toBeNull();
+    expect(toUnixTimestamp(dayjs('bad-date'))).toBeNull();
   });
 
   it('formats timestamp, date, and datetime values', () => {

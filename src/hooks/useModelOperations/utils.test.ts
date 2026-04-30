@@ -185,4 +185,24 @@ describe('useModelOperations/utils', () => {
       ]),
     );
   });
+
+  it('does not leak invalid datetime strings into range conditions', () => {
+    const modelDesc = {
+      attrs: { search_range_fields: ['created_at', 'updated_at'] },
+      fields: {
+        created_at: { field_type: 'DatetimeField' },
+        updated_at: { field_type: 'DatetimeField' },
+      },
+    } as any;
+
+    const conditions = buildSearchConditions(
+      {
+        created_at: ['bad-start', 'bad-end'],
+        updated_at: [0, 'bad-end'],
+      },
+      modelDesc,
+    );
+
+    expect(conditions).toEqual([{ field: 'updated_at', gte: 0 }]);
+  });
 });

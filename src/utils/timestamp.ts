@@ -6,7 +6,7 @@ export const isEmptyDateTimeValue = (value: any) =>
   value === undefined || value === null || value === '';
 
 export const isNumericTimestamp = (value: any) =>
-  typeof value === 'number' ||
+  (typeof value === 'number' && Number.isFinite(value)) ||
   (typeof value === 'string' && /^\d+$/.test(value));
 
 export const toTimestampMilliseconds = (value: any) => {
@@ -39,16 +39,18 @@ export const toUnixTimestamp = (value: any) => {
       : Math.floor(numValue / 1000);
   }
 
-  if ((value as any)?.unix) {
-    return (value as any).unix();
+  if (typeof (value as any)?.unix === 'function') {
+    const unixValue = Number((value as any).unix());
+    return Number.isFinite(unixValue) ? unixValue : null;
   }
 
   if (value instanceof Date) {
-    return Math.floor(value.getTime() / 1000);
+    const time = value.getTime();
+    return Number.isFinite(time) ? Math.floor(time / 1000) : null;
   }
 
   const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.unix() : value;
+  return parsed.isValid() ? parsed.unix() : null;
 };
 
 export const currentUnixTimestamp = () => Math.floor(Date.now() / 1000);

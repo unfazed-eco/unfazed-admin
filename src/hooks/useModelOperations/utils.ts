@@ -3,7 +3,14 @@
  * These functions have no React dependencies and can be used anywhere
  */
 
-import { isNumericTimestamp, toUnixTimestamp } from '@/utils/timestamp';
+import {
+  isEmptyDateTimeValue,
+  isNumericTimestamp,
+  toUnixTimestamp,
+} from '@/utils/timestamp';
+
+const isValidUnixTimestamp = (value: any): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 /**
  * Get stored settings from localStorage
@@ -104,13 +111,17 @@ export const buildSearchConditions = (
 
         case 'DatetimeField':
           // Datetime range search - use timestamp (seconds)
-          if (start) {
+          if (!isEmptyDateTimeValue(start)) {
             const startTimestamp = toUnixTimestamp(start);
-            conditions.push({ field, gte: startTimestamp } as any);
+            if (isValidUnixTimestamp(startTimestamp)) {
+              conditions.push({ field, gte: startTimestamp } as any);
+            }
           }
-          if (end) {
+          if (!isEmptyDateTimeValue(end)) {
             const endTimestamp = toUnixTimestamp(end);
-            conditions.push({ field, lte: endTimestamp } as any);
+            if (isValidUnixTimestamp(endTimestamp)) {
+              conditions.push({ field, lte: endTimestamp } as any);
+            }
           }
           break;
 
@@ -166,22 +177,29 @@ export const buildSearchConditions = (
         if (Array.isArray(value) && value.length === 2) {
           // range - use timestamp (seconds)
           const [start, end] = value;
-          if (start && end) {
+          if (!isEmptyDateTimeValue(start)) {
             const startTs = toUnixTimestamp(start);
+            if (isValidUnixTimestamp(startTs)) {
+              conditions.push({ field, gte: startTs } as any);
+            }
+          }
+          if (!isEmptyDateTimeValue(end)) {
             const endTs = toUnixTimestamp(end);
-            conditions.push(
-              { field, gte: startTs } as any,
-              { field, lte: endTs } as any,
-            );
+            if (isValidUnixTimestamp(endTs)) {
+              conditions.push({ field, lte: endTs } as any);
+            }
           }
           return;
         } else if (
-          (value as any)?.unix ||
+          typeof (value as any)?.unix === 'function' ||
           isNumericTimestamp(value) ||
           value instanceof Date
         ) {
           // Single datetime value - use timestamp
-          condition.eq = toUnixTimestamp(value) as any;
+          const timestamp = toUnixTimestamp(value);
+          if (isValidUnixTimestamp(timestamp)) {
+            condition.eq = timestamp as any;
+          }
         }
         break;
 
