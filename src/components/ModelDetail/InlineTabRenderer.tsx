@@ -59,6 +59,9 @@ interface InlineTabRendererProps {
   setBackRelationEditModalRecord: React.Dispatch<
     React.SetStateAction<ModalRecordState>
   >;
+  setBackRelationCopyModalRecord: React.Dispatch<
+    React.SetStateAction<ModalRecordState>
+  >;
   previewInlineData: InlinePreviewDataState;
   setPreviewInlineData: React.Dispatch<
     React.SetStateAction<InlinePreviewDataState>
@@ -83,6 +86,7 @@ export const useInlineTabRenderer = ({
   setBackRelationAddModalVisible,
   setBackRelationBatchAddModalVisible,
   setBackRelationEditModalRecord,
+  setBackRelationCopyModalRecord,
   previewInlineData,
   setPreviewInlineData,
   setOperationLoading,
@@ -454,6 +458,15 @@ export const useInlineTabRenderer = ({
                         }))
                     : undefined
                 }
+                onCopyRelated={
+                  isBkFk && !isTargetFieldNullable && canAdd && !hasPreviewRows
+                    ? (copyRecord: any) =>
+                        setBackRelationCopyModalRecord((prev) => ({
+                          ...prev,
+                          [inlineName]: copyRecord,
+                        }))
+                    : undefined
+                }
                 // bk_o2o can always open modal to change the linked record
                 linkDisabled={false}
                 actionRef={
@@ -517,6 +530,7 @@ export const useInlineTabRenderer = ({
       setBackRelationAddModalVisible,
       setBackRelationBatchAddModalVisible,
       setBackRelationEditModalRecord,
+      setBackRelationCopyModalRecord,
       previewInlineData,
       setPreviewInlineData,
       setOperationLoading,

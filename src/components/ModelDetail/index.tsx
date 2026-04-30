@@ -104,6 +104,8 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   ] = useState<ModalVisibilityState>({});
   const [backRelationEditModalRecord, setBackRelationEditModalRecord] =
     useState<ModalRecordState>({});
+  const [backRelationCopyModalRecord, setBackRelationCopyModalRecord] =
+    useState<ModalRecordState>({});
   const [previewInlineData, setPreviewInlineData] =
     useState<InlinePreviewDataState>({});
   const [batchSaveLoading, setBatchSaveLoading] =
@@ -179,6 +181,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     setBackRelationAddModalVisible,
     setBackRelationBatchAddModalVisible,
     setBackRelationEditModalRecord,
+    setBackRelationCopyModalRecord,
     previewInlineData,
     setPreviewInlineData,
     setOperationLoading,
@@ -493,6 +496,44 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                   ...prev,
                   [inlineName]: false,
                 }));
+              }}
+            />
+          );
+        },
+      )}
+
+      {/* Back relation (bk_fk) copy modals - create new related records from row data */}
+      {Object.entries(backRelationCopyModalRecord).map(
+        ([inlineName, copyRecord]) => {
+          if (!copyRecord || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc.relation;
+          if (relation?.relation !== 'bk_fk') return null;
+
+          return (
+            <BackRelationAddModal
+              key={`copy-${inlineName}-${copyRecord.id || 'record'}`}
+              visible={true}
+              mode="create"
+              initialData={copyRecord}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              mainRecord={mainRecordData}
+              messageApi={messageApi}
+              onClose={() => {
+                setBackRelationCopyModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+              }}
+              onSuccess={() => {
+                setBackRelationCopyModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+                debouncedReload(inlineName);
               }}
             />
           );

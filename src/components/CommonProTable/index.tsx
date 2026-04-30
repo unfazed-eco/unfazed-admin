@@ -51,6 +51,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   onBatchAddRelated,
   onDeleteRelated,
   onEditRelated,
+  onCopyRelated,
   onRequest,
   tableProps = {},
   actionRef,
@@ -82,6 +83,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     onUnlink,
     onDeleteRelated,
     onEditRelated,
+    onCopyRelated,
   });
 
   // Generate batch action menu items
