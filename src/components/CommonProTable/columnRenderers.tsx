@@ -5,8 +5,8 @@
 import { EyeOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { Image, Tooltip } from 'antd';
-import dayjs from 'dayjs';
 import React from 'react';
+import { formatDateTimeValue } from '@/utils/timestamp';
 
 /**
  * Render boolean field
@@ -24,18 +24,7 @@ export const renderDateField = (
   fieldName: string,
 ): ProColumns<Record<string, any>>['render'] => {
   return (_, record) => {
-    const value = record[fieldName];
-    if (!value) return '-';
-    const numValue = typeof value === 'string' ? Number(value) : value;
-    const timestamp =
-      typeof numValue === 'number' &&
-      !Number.isNaN(numValue) &&
-      numValue > 0 &&
-      numValue < 10000000000
-        ? numValue * 1000
-        : numValue;
-    const result = dayjs(timestamp);
-    return result.isValid() ? result.format('YYYY-MM-DD') : '-';
+    return formatDateTimeValue(record[fieldName], 'YYYY-MM-DD');
   };
 };
 
@@ -46,18 +35,7 @@ export const renderDatetimeField = (
   fieldName: string,
 ): ProColumns<Record<string, any>>['render'] => {
   return (_, record) => {
-    const value = record[fieldName];
-    if (!value) return '-';
-    const numValue = typeof value === 'string' ? Number(value) : value;
-    const timestamp =
-      typeof numValue === 'number' &&
-      !Number.isNaN(numValue) &&
-      numValue > 0 &&
-      numValue < 10000000000
-        ? numValue * 1000
-        : numValue;
-    const result = dayjs(timestamp);
-    return result.isValid() ? result.format('YYYY-MM-DD HH:mm:ss') : '-';
+    return formatDateTimeValue(record[fieldName], 'YYYY-MM-DD HH:mm:ss');
   };
 };
 
@@ -68,18 +46,7 @@ export const renderTimeField = (
   fieldName: string,
 ): ProColumns<Record<string, any>>['render'] => {
   return (_, record) => {
-    const value = record[fieldName];
-    if (!value) return '-';
-    const numValue = typeof value === 'string' ? Number(value) : value;
-    const timestamp =
-      typeof numValue === 'number' &&
-      !Number.isNaN(numValue) &&
-      numValue > 0 &&
-      numValue < 10000000000
-        ? numValue * 1000
-        : numValue;
-    const result = dayjs(timestamp);
-    return result.isValid() ? result.format('HH:mm:ss') : '-';
+    return formatDateTimeValue(record[fieldName], 'HH:mm:ss');
   };
 };
 

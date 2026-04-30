@@ -3,6 +3,8 @@
  * These functions have no React dependencies and can be used anywhere
  */
 
+import { isNumericTimestamp, toUnixTimestamp } from '@/utils/timestamp';
+
 /**
  * Get stored settings from localStorage
  */
@@ -103,15 +105,11 @@ export const buildSearchConditions = (
         case 'DatetimeField':
           // Datetime range search - use timestamp (seconds)
           if (start) {
-            const startTimestamp =
-              (start as any)?.unix?.() ||
-              Math.floor(new Date(start).getTime() / 1000);
+            const startTimestamp = toUnixTimestamp(start);
             conditions.push({ field, gte: startTimestamp } as any);
           }
           if (end) {
-            const endTimestamp =
-              (end as any)?.unix?.() ||
-              Math.floor(new Date(end).getTime() / 1000);
+            const endTimestamp = toUnixTimestamp(end);
             conditions.push({ field, lte: endTimestamp } as any);
           }
           break;
@@ -169,23 +167,21 @@ export const buildSearchConditions = (
           // range - use timestamp (seconds)
           const [start, end] = value;
           if (start && end) {
-            const startTs =
-              (start as any)?.unix?.() ||
-              Math.floor(new Date(start).getTime() / 1000);
-            const endTs =
-              (end as any)?.unix?.() ||
-              Math.floor(new Date(end).getTime() / 1000);
+            const startTs = toUnixTimestamp(start);
+            const endTs = toUnixTimestamp(end);
             conditions.push(
               { field, gte: startTs } as any,
               { field, lte: endTs } as any,
             );
           }
           return;
-        } else if ((value as any)?.unix) {
+        } else if (
+          (value as any)?.unix ||
+          isNumericTimestamp(value) ||
+          value instanceof Date
+        ) {
           // Single datetime value - use timestamp
-          condition.eq = (value as any).unix() as any;
-        } else if (value instanceof Date) {
-          condition.eq = Math.floor(value.getTime() / 1000) as any;
+          condition.eq = toUnixTimestamp(value) as any;
         }
         break;
 

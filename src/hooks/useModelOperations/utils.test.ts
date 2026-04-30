@@ -159,4 +159,30 @@ describe('useModelOperations/utils', () => {
       ]),
     );
   });
+
+  it('keeps numeric DatetimeField search timestamps in seconds', () => {
+    const modelDesc = {
+      attrs: { search_range_fields: ['created_at'] },
+      fields: {
+        created_at: { field_type: 'DatetimeField' },
+        updated_at: { field_type: 'DatetimeField' },
+      },
+    } as any;
+
+    const conditions = buildSearchConditions(
+      {
+        created_at: [1700000000, '1700000100'],
+        updated_at: 1700000000000,
+      },
+      modelDesc,
+    );
+
+    expect(conditions).toEqual(
+      expect.arrayContaining([
+        { field: 'created_at', gte: 1700000000 },
+        { field: 'created_at', lte: 1700000100 },
+        { field: 'updated_at', eq: 1700000000 },
+      ]),
+    );
+  });
 });
