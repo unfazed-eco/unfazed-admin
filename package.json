@@ -42,6 +42,7 @@
     "@antv/l7": "^2.22.7",
     "@antv/l7-react": "^2.4.3",
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",
+    "@ckeditor/ckeditor5-build-decoupled-document": "^41.4.2",
     "@ckeditor/ckeditor5-react": "^6.2.0",
     "antd": "^5.25.4",
     "antd-style": "^3.7.0",

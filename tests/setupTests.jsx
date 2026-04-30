@@ -100,6 +100,27 @@ jest.mock('@ckeditor/ckeditor5-build-classic', () => ({
   },
 }));
 
+jest.mock('@ckeditor/ckeditor5-build-decoupled-document', () => ({
+  __esModule: true,
+  default: {
+    create() {
+      return Promise.resolve({
+        destroy: jest.fn(),
+        getData: jest.fn(() => ''),
+        setData: jest.fn(),
+        ui: {
+          getEditableElement: jest.fn(),
+          view: {
+            toolbar: {
+              element: globalThis.document?.createElement('div') ?? {},
+            },
+          },
+        },
+      });
+    },
+  },
+}));
+
 jest.mock('@ckeditor/ckeditor5-react', () => ({
   __esModule: true,
   CKEditor: () => {

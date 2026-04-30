@@ -152,7 +152,6 @@ export const renderFormField = (
           key={fieldName}
           {...commonProps}
           fieldProps={{
-            height: 300,
             readOnly: isReadonly,
             config: {
               placeholder: commonProps.tooltip || 'Start writing your story...',

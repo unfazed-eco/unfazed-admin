@@ -106,3 +106,29 @@ ol {
 [class*='ant-pro-query-filter-collapse-button'] {
   white-space: nowrap !important;
 }
+
+.ck-editor-wrapper {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  overflow: hidden;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+
+  &:focus-within {
+    border-color: #1677ff;
+    box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+  }
+
+  .ck-editor-toolbar {
+    .ck.ck-toolbar {
+      border: 0 !important;
+      border-bottom: 1px solid #d9d9d9 !important;
+    }
+  }
+
+  .ck.ck-editor__editable {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}

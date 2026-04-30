@@ -1,6 +1,6 @@
 /* eslint-disable import/no-unresolved */
 
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import DecoupledEditor from '@ckeditor/ckeditor5-build-decoupled-document';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import React, {
   forwardRef,
@@ -20,7 +20,11 @@ type CKEditorInstance = {
       editable?: {
         element?: HTMLElement;
       };
+      toolbar?: {
+        element?: HTMLElement;
+      };
     };
+    getEditableElement?: () => HTMLElement | null;
   };
 };
 
@@ -61,23 +65,39 @@ const EditorJSComponent = forwardRef<EditorJSRef, EditorJSProps>(
       onChange,
       config = {},
       readOnly = false,
-      height = 200,
+      height,
       style = {},
       className = '',
     },
     ref,
   ) => {
     const editorRef = useRef<CKEditorInstance | null>(null);
+    const toolbarRef = useRef<HTMLDivElement | null>(null);
     const latestValueRef = useRef<string>(value);
 
+    const getEditableElement = (editor: CKEditorInstance) =>
+      editor.ui.getEditableElement?.() ??
+      editor.ui.view.editable?.element ??
+      null;
+
     const applyHeight = (editor: CKEditorInstance | null) => {
-      if (!editor) return;
-      const editableElement = editor.ui.view.editable?.element as
-        | HTMLElement
-        | undefined;
+      if (!editor || typeof height !== 'number') return;
+      const editableElement = getEditableElement(editor);
       if (editableElement) {
-        editableElement.style.minHeight = `${height}px`;
+        editableElement.style.setProperty(
+          'min-height',
+          `${height}px`,
+          'important',
+        );
       }
+    };
+
+    const mountToolbar = (editor: CKEditorInstance) => {
+      const toolbarElement = editor.ui.view.toolbar?.element;
+      const toolbarContainer = toolbarRef.current;
+      if (!toolbarElement || !toolbarContainer) return;
+
+      toolbarContainer.replaceChildren(toolbarElement);
     };
 
     const toggleReadOnly = (
@@ -142,17 +162,16 @@ const EditorJSComponent = forwardRef<EditorJSRef, EditorJSProps>(
     }, [height]);
 
     return (
-      <div
-        className={`ck-editor-wrapper ${className}`}
-        style={{ minHeight: height, ...style }}
-      >
+      <div className={`ck-editor-wrapper ${className}`} style={{ ...style }}>
+        <div ref={toolbarRef} className="ck-editor-toolbar" />
         <CKEditor
-          editor={ClassicEditor}
+          editor={DecoupledEditor}
           data={value ?? ''}
           disabled={readOnly}
           config={config}
           onReady={(editor: CKEditorInstance) => {
             editorRef.current = editor;
+            mountToolbar(editor);
             applyHeight(editor);
             toggleReadOnly(editor, readOnly);
             if (editor.getData() !== latestValueRef.current) {

@@ -400,3 +400,8 @@ declare module '@ckeditor/ckeditor5-build-classic' {
   const ClassicEditor: any;
   export default ClassicEditor;
 }
+
+declare module '@ckeditor/ckeditor5-build-decoupled-document' {
+  const DecoupledEditor: any;
+  export default DecoupledEditor;
+}

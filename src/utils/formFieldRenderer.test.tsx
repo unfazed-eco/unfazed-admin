@@ -154,6 +154,8 @@ describe('formFieldRenderer', () => {
     );
     expect(editor.type).toBe(require('@/components').ProFormEditorJS);
     expect(editor.props.fieldProps.readOnly).toBe(true);
+    expect(editor.props.fieldProps.height).toBeUndefined();
+    expect(editor.props.fieldProps.config.placeholder).toBe('help');
 
     const fallback: any = renderFormField('x', { field_type: 'UnknownField' });
     expect(fallback.type.displayName).toBe('ProFormText');
