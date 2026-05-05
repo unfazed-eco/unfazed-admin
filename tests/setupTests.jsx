@@ -1,6 +1,9 @@
 ﻿import { defaultConfig } from 'antd/lib/theme/internal';
 
+import React from 'react';
+
 defaultConfig.hashed = false;
+globalThis.React = React;
 
 const localStorageMock = {
   getItem: jest.fn(),
