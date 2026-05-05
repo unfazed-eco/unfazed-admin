@@ -7,7 +7,15 @@ import { Modal } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import React, { useCallback, useState } from 'react';
 import { executeModelAction } from '@/services/api';
+import {
+  isEmptyDateTimeValue,
+  isNumericTimestamp,
+  toUnixTimestamp,
+} from '@/utils/timestamp';
 import type { ActionConfig } from './types';
+
+const isValidUnixTimestamp = (value: any): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 /**
  * Build search conditions from form values
@@ -43,7 +51,6 @@ export const buildSearchConditions = (
         cond.eq = value ? 1 : 0;
         break;
       case 'DateField':
-      case 'DatetimeField':
         if (Array.isArray(value) && value.length === 2) {
           // range
           const [start, end] = value;
@@ -61,11 +68,34 @@ export const buildSearchConditions = (
           }
           return;
         } else if ((value as any)?.format) {
-          cond.eq = (value as any).format(
-            fieldConfig.field_type === 'DateField'
-              ? 'YYYY-MM-DD'
-              : 'YYYY-MM-DD HH:mm:ss',
-          ) as any;
+          cond.eq = (value as any).format('YYYY-MM-DD') as any;
+        }
+        break;
+      case 'DatetimeField':
+        if (Array.isArray(value) && value.length === 2) {
+          const [start, end] = value;
+          if (!isEmptyDateTimeValue(start)) {
+            const startTs = toUnixTimestamp(start);
+            if (isValidUnixTimestamp(startTs)) {
+              conditions.push({ field, gte: startTs } as any);
+            }
+          }
+          if (!isEmptyDateTimeValue(end)) {
+            const endTs = toUnixTimestamp(end);
+            if (isValidUnixTimestamp(endTs)) {
+              conditions.push({ field, lte: endTs } as any);
+            }
+          }
+          return;
+        } else if (
+          typeof (value as any)?.unix === 'function' ||
+          isNumericTimestamp(value) ||
+          value instanceof Date
+        ) {
+          const timestamp = toUnixTimestamp(value);
+          if (isValidUnixTimestamp(timestamp)) {
+            cond.eq = timestamp;
+          }
         }
         break;
       default:

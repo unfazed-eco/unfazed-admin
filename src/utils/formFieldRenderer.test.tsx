@@ -121,6 +121,9 @@ describe('formFieldRenderer', () => {
     expect(element.props.convertValue(1700000000).valueOf()).toBe(
       1700000000 * 1000,
     );
+    expect(element.props.convertValue('1700000000').valueOf()).toBe(
+      1700000000 * 1000,
+    );
 
     const thirteen = element.props.convertValue(1700000000000);
     expect(thirteen.valueOf()).toBe(1700000000000);
@@ -130,6 +133,15 @@ describe('formFieldRenderer', () => {
     });
     expect(element.props.transform('2026-01-01 00:00:00')).toEqual({
       created_at: expect.any(Number),
+    });
+    expect(element.props.transform(1700000000)).toEqual({
+      created_at: 1700000000,
+    });
+    expect(element.props.transform('1700000000')).toEqual({
+      created_at: 1700000000,
+    });
+    expect(element.props.transform(1700000000000)).toEqual({
+      created_at: 1700000000,
     });
   });
 
@@ -142,6 +154,8 @@ describe('formFieldRenderer', () => {
     );
     expect(editor.type).toBe(require('@/components').ProFormEditorJS);
     expect(editor.props.fieldProps.readOnly).toBe(true);
+    expect(editor.props.fieldProps.height).toBeUndefined();
+    expect(editor.props.fieldProps.config.placeholder).toBe('help');
 
     const fallback: any = renderFormField('x', { field_type: 'UnknownField' });
     expect(fallback.type.displayName).toBe('ProFormText');

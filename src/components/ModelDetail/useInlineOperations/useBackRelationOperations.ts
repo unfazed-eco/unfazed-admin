@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { saveModelData } from '@/services/api';
+import { currentUnixTimestamp } from '@/utils/timestamp';
 
 interface UseBackRelationOperationsOptions {
   mainRecord: Record<string, any>;
@@ -25,7 +26,7 @@ export const useBackRelationOperations = ({
               data: {
                 ...targetRecord,
                 [relation.target_field]: mainRecord[relation.source_field],
-                updated_at: Math.floor(Date.now() / 1000),
+                updated_at: currentUnixTimestamp(),
               },
             });
 
@@ -67,7 +68,7 @@ export const useBackRelationOperations = ({
             data: {
               ...targetRecord,
               [relation.target_field]: negativeFkValue,
-              updated_at: Math.floor(Date.now() / 1000),
+              updated_at: currentUnixTimestamp(),
             },
           });
 

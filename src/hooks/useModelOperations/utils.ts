@@ -3,6 +3,15 @@
  * These functions have no React dependencies and can be used anywhere
  */
 
+import {
+  isEmptyDateTimeValue,
+  isNumericTimestamp,
+  toUnixTimestamp,
+} from '@/utils/timestamp';
+
+const isValidUnixTimestamp = (value: any): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
 /**
  * Get stored settings from localStorage
  */
@@ -102,17 +111,17 @@ export const buildSearchConditions = (
 
         case 'DatetimeField':
           // Datetime range search - use timestamp (seconds)
-          if (start) {
-            const startTimestamp =
-              (start as any)?.unix?.() ||
-              Math.floor(new Date(start).getTime() / 1000);
-            conditions.push({ field, gte: startTimestamp } as any);
+          if (!isEmptyDateTimeValue(start)) {
+            const startTimestamp = toUnixTimestamp(start);
+            if (isValidUnixTimestamp(startTimestamp)) {
+              conditions.push({ field, gte: startTimestamp } as any);
+            }
           }
-          if (end) {
-            const endTimestamp =
-              (end as any)?.unix?.() ||
-              Math.floor(new Date(end).getTime() / 1000);
-            conditions.push({ field, lte: endTimestamp } as any);
+          if (!isEmptyDateTimeValue(end)) {
+            const endTimestamp = toUnixTimestamp(end);
+            if (isValidUnixTimestamp(endTimestamp)) {
+              conditions.push({ field, lte: endTimestamp } as any);
+            }
           }
           break;
 
@@ -168,24 +177,29 @@ export const buildSearchConditions = (
         if (Array.isArray(value) && value.length === 2) {
           // range - use timestamp (seconds)
           const [start, end] = value;
-          if (start && end) {
-            const startTs =
-              (start as any)?.unix?.() ||
-              Math.floor(new Date(start).getTime() / 1000);
-            const endTs =
-              (end as any)?.unix?.() ||
-              Math.floor(new Date(end).getTime() / 1000);
-            conditions.push(
-              { field, gte: startTs } as any,
-              { field, lte: endTs } as any,
-            );
+          if (!isEmptyDateTimeValue(start)) {
+            const startTs = toUnixTimestamp(start);
+            if (isValidUnixTimestamp(startTs)) {
+              conditions.push({ field, gte: startTs } as any);
+            }
+          }
+          if (!isEmptyDateTimeValue(end)) {
+            const endTs = toUnixTimestamp(end);
+            if (isValidUnixTimestamp(endTs)) {
+              conditions.push({ field, lte: endTs } as any);
+            }
           }
           return;
-        } else if ((value as any)?.unix) {
+        } else if (
+          typeof (value as any)?.unix === 'function' ||
+          isNumericTimestamp(value) ||
+          value instanceof Date
+        ) {
           // Single datetime value - use timestamp
-          condition.eq = (value as any).unix() as any;
-        } else if (value instanceof Date) {
-          condition.eq = Math.floor(value.getTime() / 1000) as any;
+          const timestamp = toUnixTimestamp(value);
+          if (isValidUnixTimestamp(timestamp)) {
+            condition.eq = timestamp as any;
+          }
         }
         break;
 

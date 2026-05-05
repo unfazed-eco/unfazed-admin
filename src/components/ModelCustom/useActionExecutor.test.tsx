@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import * as api from '@/services/api';
-import { useActionExecutor } from './useActionExecutor';
+import { buildSearchConditions, useActionExecutor } from './useActionExecutor';
 
 jest.mock('@/services/api', () => ({
   executeModelAction: jest.fn(),
@@ -64,6 +64,29 @@ describe('useActionExecutor', () => {
     (window.URL as any).createObjectURL = originalCreateObjectURL;
     (window.URL as any).revokeObjectURL = originalRevokeObjectURL;
     clickSpy.mockRestore();
+  });
+
+  it('builds DatetimeField action conditions as unix seconds and skips invalid range values', () => {
+    const conditions = buildSearchConditions(
+      {
+        created_at: ['bad-start', 'bad-end'],
+        updated_at: [0, '1700000100'],
+        exact_at: { unix: jest.fn(() => 1700000200) },
+      },
+      {
+        fields: {
+          created_at: { field_type: 'DatetimeField' },
+          updated_at: { field_type: 'DatetimeField' },
+          exact_at: { field_type: 'DatetimeField' },
+        },
+      } as any,
+    );
+
+    expect(conditions).toEqual([
+      { field: 'updated_at', gte: 0 },
+      { field: 'updated_at', lte: 1700000100 },
+      { field: 'exact_at', eq: 1700000200 },
+    ]);
   });
 
   it('should download when response data contains content/filename/contentType', async () => {

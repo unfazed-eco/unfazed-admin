@@ -15,18 +15,23 @@ const mockRenderJsonField = jest.fn(() => jest.fn(() => 'json'));
 const mockRenderTextRangeFormItem = jest.fn(() => null);
 
 jest.mock('./columnRenderers', () => ({
-  renderBooleanField: (...args: any[]) => mockRenderBooleanField(...args),
-  renderChoiceField: (...args: any[]) => mockRenderChoiceField(...args),
-  renderDateField: (...args: any[]) => mockRenderDateField(...args),
-  renderDatetimeField: (...args: any[]) => mockRenderDatetimeField(...args),
-  renderEditorField: (...args: any[]) => mockRenderEditorField(...args),
-  renderImageField: (...args: any[]) => mockRenderImageField(...args),
-  renderJsonField: (...args: any[]) => mockRenderJsonField(...args),
-  renderNumberField: (...args: any[]) => mockRenderNumberField(...args),
-  renderTextField: (...args: any[]) => mockRenderTextField(...args),
+  renderBooleanField: (...args: any[]) =>
+    (mockRenderBooleanField as any)(...args),
+  renderChoiceField: (...args: any[]) =>
+    (mockRenderChoiceField as any)(...args),
+  renderDateField: (...args: any[]) => (mockRenderDateField as any)(...args),
+  renderDatetimeField: (...args: any[]) =>
+    (mockRenderDatetimeField as any)(...args),
+  renderEditorField: (...args: any[]) =>
+    (mockRenderEditorField as any)(...args),
+  renderImageField: (...args: any[]) => (mockRenderImageField as any)(...args),
+  renderJsonField: (...args: any[]) => (mockRenderJsonField as any)(...args),
+  renderNumberField: (...args: any[]) =>
+    (mockRenderNumberField as any)(...args),
+  renderTextField: (...args: any[]) => (mockRenderTextField as any)(...args),
   renderTextRangeFormItem: (...args: any[]) =>
-    mockRenderTextRangeFormItem(...args),
-  renderTimeField: (...args: any[]) => mockRenderTimeField(...args),
+    (mockRenderTextRangeFormItem as any)(...args),
+  renderTimeField: (...args: any[]) => (mockRenderTimeField as any)(...args),
 }));
 
 describe('useColumnGenerator', () => {
@@ -39,6 +44,7 @@ describe('useColumnGenerator', () => {
   const onUnlink = jest.fn().mockResolvedValue(undefined);
   const onDeleteRelated = jest.fn().mockResolvedValue(undefined);
   const onEditRelated = jest.fn();
+  const onCopyRelated = jest.fn().mockResolvedValue(undefined);
 
   const modelDesc = {
     attrs: {
@@ -126,6 +132,7 @@ describe('useColumnGenerator', () => {
         onUnlink,
         onDeleteRelated,
         onEditRelated,
+        onCopyRelated,
       }),
     );
 
@@ -178,6 +185,7 @@ describe('useColumnGenerator', () => {
         onUnlink,
         onDeleteRelated,
         onEditRelated: undefined,
+        onCopyRelated,
       }),
     );
 
@@ -215,6 +223,10 @@ describe('useColumnGenerator', () => {
     await deleteRelatedPop.props.onConfirm();
     expect(onDeleteRelated).toHaveBeenCalled();
 
+    const copyBtn = rendered.find((x) => x.key === 'copy-related');
+    await copyBtn.props.onClick();
+    expect(onCopyRelated).toHaveBeenCalledWith({ id: 1, name: 'A' });
+
     const moreDropdown = rendered.find((x) => x.key === 'more');
     moreDropdown.props.menu.items[0].onClick();
     expect(onAction).toHaveBeenCalledWith(
@@ -244,6 +256,7 @@ describe('useColumnGenerator', () => {
         onUnlink: undefined,
         onDeleteRelated: undefined,
         onEditRelated: undefined,
+        onCopyRelated: undefined,
       }),
     );
 
@@ -296,6 +309,7 @@ describe('useColumnGenerator', () => {
         onUnlink: undefined,
         onDeleteRelated: undefined,
         onEditRelated,
+        onCopyRelated: undefined,
       }),
     );
 

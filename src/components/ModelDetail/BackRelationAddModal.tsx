@@ -49,6 +49,8 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
     ? 'Updated successfully'
     : 'Created successfully';
   const failedMessage = isEditMode ? 'Update failed' : 'Create failed';
+  const initialValues =
+    !isEditMode && initialData ? { ...initialData, id: -1 } : initialData || {};
 
   return (
     <Modal
@@ -68,7 +70,7 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
         layout="horizontal"
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
-        initialValues={isEditMode ? initialData || {} : undefined}
+        initialValues={initialValues}
         onFinish={async (values) => {
           try {
             // Keep original record payload for update mode, then merge user changes.

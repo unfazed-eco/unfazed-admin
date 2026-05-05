@@ -193,7 +193,13 @@ jest.mock('./BackRelationAddModal', () => {
           { 'data-testid': `back-add-modal-${mode}-${inlineName}` },
           React.createElement(
             'button',
-            { type: 'button', onClick: onSuccess },
+            {
+              type: 'button',
+              onClick: () => {
+                onSuccess();
+                onClose();
+              },
+            },
             'back-add-success',
           ),
           React.createElement(
@@ -377,6 +383,18 @@ describe('ModelDetail', () => {
             },
             `open-back-edit-${inlineName}`,
           ),
+          React.createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () =>
+                args.setBackRelationCopyModalRecord((prev: any) => ({
+                  ...prev,
+                  [inlineName]: { id: 502, name: 'copy-me' },
+                })),
+            },
+            `open-back-copy-${inlineName}`,
+          ),
         ),
       debouncedReload: mockDebouncedReload,
     }));
@@ -475,6 +493,12 @@ describe('ModelDetail', () => {
     const editModal = screen.getByTestId('back-add-modal-edit-comments');
     expect(editModal).toBeTruthy();
     fireEvent.click(within(editModal).getByText('back-add-success'));
+    expect(mockDebouncedReload).toHaveBeenCalledWith('comments');
+
+    fireEvent.click(screen.getByText('open-back-copy-comments'));
+    const copyModal = screen.getByTestId('back-add-modal-create-comments');
+    expect(copyModal).toBeTruthy();
+    fireEvent.click(within(copyModal).getByText('back-add-success'));
     expect(mockDebouncedReload).toHaveBeenCalledWith('comments');
 
     fireEvent.click(screen.getByText('Back'));

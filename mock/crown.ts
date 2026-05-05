@@ -2318,7 +2318,7 @@ export default {
       });
     } else if (name === 'crown_history') {
       // Crown History 保存操作
-      const isUpdate = data.id;
+      const isUpdate = typeof data.id === 'number' && data.id > 0;
       let savedData: any = null;
 
       if (isUpdate) {

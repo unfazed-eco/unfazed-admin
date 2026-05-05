@@ -1,9 +1,9 @@
 import { LinkOutlined } from '@ant-design/icons';
 import { ProTable } from '@ant-design/pro-components';
 import { Button, Modal } from 'antd';
-import dayjs from 'dayjs';
 import React, { useEffect, useState } from 'react';
 import { getModelData } from '@/services/api';
+import { formatDateTimeValue } from '@/utils/timestamp';
 
 interface BackRelationSelectionModalProps {
   visible: boolean;
@@ -86,6 +86,13 @@ const BackRelationSelectionModal: React.FC<BackRelationSelectionModalProps> = ({
 
   // Check if there are any changes
   const hasChanges = newlySelectedCount > 0 || unlinkedCount > 0;
+
+  const renderDateTimeColumn = (
+    value: any,
+    record: any,
+    fieldName: string,
+    format: string,
+  ) => formatDateTimeValue(record?.[fieldName] ?? value, format);
 
   const rowSelection = {
     type: isSingleSelect ? ('radio' as const) : ('checkbox' as const),
@@ -293,64 +300,32 @@ const BackRelationSelectionModal: React.FC<BackRelationSelectionModalProps> = ({
               } else if (fieldConf.field_type === 'DateField') {
                 column.valueType = 'date';
                 column.render = (value: any, record: any) => {
-                  const actualValue = record?.[fieldName] ?? value;
-                  if (actualValue === null || actualValue === undefined)
-                    return '-';
-                  const numValue =
-                    typeof actualValue === 'string'
-                      ? Number(actualValue)
-                      : actualValue;
-                  const timestamp =
-                    typeof numValue === 'number' &&
-                    !Number.isNaN(numValue) &&
-                    numValue > 0 &&
-                    numValue < 10000000000
-                      ? numValue * 1000
-                      : numValue;
-                  const result = dayjs(timestamp);
-                  return result.isValid() ? result.format('YYYY-MM-DD') : '-';
+                  return renderDateTimeColumn(
+                    value,
+                    record,
+                    fieldName,
+                    'YYYY-MM-DD',
+                  );
                 };
               } else if (fieldConf.field_type === 'DatetimeField') {
                 column.valueType = 'dateTime';
                 column.render = (value: any, record: any) => {
-                  const actualValue = record?.[fieldName] ?? value;
-                  if (actualValue === null || actualValue === undefined)
-                    return '-';
-                  const numValue =
-                    typeof actualValue === 'string'
-                      ? Number(actualValue)
-                      : actualValue;
-                  const timestamp =
-                    typeof numValue === 'number' &&
-                    !Number.isNaN(numValue) &&
-                    numValue > 0 &&
-                    numValue < 10000000000
-                      ? numValue * 1000
-                      : numValue;
-                  const result = dayjs(timestamp);
-                  return result.isValid()
-                    ? result.format('YYYY-MM-DD HH:mm:ss')
-                    : '-';
+                  return renderDateTimeColumn(
+                    value,
+                    record,
+                    fieldName,
+                    'YYYY-MM-DD HH:mm:ss',
+                  );
                 };
               } else if (fieldConf.field_type === 'TimeField') {
                 column.valueType = 'time';
                 column.render = (value: any, record: any) => {
-                  const actualValue = record?.[fieldName] ?? value;
-                  if (actualValue === null || actualValue === undefined)
-                    return '-';
-                  const numValue =
-                    typeof actualValue === 'string'
-                      ? Number(actualValue)
-                      : actualValue;
-                  const timestamp =
-                    typeof numValue === 'number' &&
-                    !Number.isNaN(numValue) &&
-                    numValue > 0 &&
-                    numValue < 10000000000
-                      ? numValue * 1000
-                      : numValue;
-                  const result = dayjs(timestamp);
-                  return result.isValid() ? result.format('HH:mm:ss') : '-';
+                  return renderDateTimeColumn(
+                    value,
+                    record,
+                    fieldName,
+                    'HH:mm:ss',
+                  );
                 };
               } else if (
                 fieldConf.field_type === 'IntegerField' ||
