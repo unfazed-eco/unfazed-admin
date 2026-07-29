@@ -9,6 +9,7 @@ import {
   getPageSize,
   getTimeZone,
   setAppSettings,
+  setDocumentFavicon,
 } from './settings';
 
 describe('utils/settings', () => {
@@ -89,5 +90,24 @@ describe('utils/settings', () => {
     expect(getAppVersion()).toBe('2.0.0');
     expect(getExtraSettings()).toEqual({ k: 'v' });
     expect(getAuthPlugins()).toEqual([{ platform: 'github' }]);
+  });
+
+  it('updates existing favicon link and creates one when missing', () => {
+    document.head.innerHTML =
+      '<link rel="icon" type="image/png" href="/old.png" />';
+
+    setDocumentFavicon('/new.png');
+
+    expect(
+      document.querySelector<HTMLLinkElement>('link[rel~="icon"]')?.href,
+    ).toContain('/new.png');
+
+    document.head.innerHTML = '';
+    setDocumentFavicon('/created.png');
+
+    const link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+    expect(link?.rel).toBe('icon');
+    expect(link?.type).toBe('image/png');
+    expect(link?.href).toContain('/created.png');
   });
 });

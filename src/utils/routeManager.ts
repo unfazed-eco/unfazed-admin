@@ -1,15 +1,15 @@
 /**
- * 统一路由管理器
- * 负责合并内置路由和动态路由，生成完整的路由配置
+ * Unified route manager.
+ * Responsible for merging built-in routes with dynamic routes.
  */
 
 import { getRouteList } from '@/services/api';
 
-// 注意：静态路由现在在 config/routes.ts 中定义
-// 这里只保留动态路由相关的工具函数
+// Static routes are defined in config/routes.ts.
+// This file only keeps dynamic-route-related utilities.
 
 /**
- * 将API路由转换为UmiJS路由格式
+ * Convert API routes into UmiJS route objects.
  */
 function _transformApiRouteToUmiRoute(apiRoute: API.AdminRoute): any {
   const umiRoute: any = {
@@ -17,7 +17,7 @@ function _transformApiRouteToUmiRoute(apiRoute: API.AdminRoute): any {
     name: apiRoute.name,
   };
 
-  // 根据组件类型决定如何渲染
+  // Choose the render target based on the component type.
   switch (apiRoute.component) {
     case 'ModelAdmin':
       umiRoute.component = './DynamicRoute';
@@ -29,12 +29,12 @@ function _transformApiRouteToUmiRoute(apiRoute: API.AdminRoute): any {
       umiRoute.component = './DynamicRoute';
       break;
     default:
-      // 传统组件路径
+      // Traditional component path.
       umiRoute.component = apiRoute.component;
       break;
   }
 
-  // 处理子路由
+  // Handle nested routes.
   if (apiRoute.routes && apiRoute.routes.length > 0) {
     umiRoute.routes = apiRoute.routes.map(_transformApiRouteToUmiRoute);
   }
@@ -43,7 +43,7 @@ function _transformApiRouteToUmiRoute(apiRoute: API.AdminRoute): any {
 }
 
 /**
- * 将API路由数据转换为菜单数据格式
+ * Convert API route data into menu data.
  */
 export function transformApiRoutesToMenuData(routes: API.AdminRoute[]): any[] {
   const transformRoute = (route: API.AdminRoute): any => {
@@ -52,12 +52,12 @@ export function transformApiRoutesToMenuData(routes: API.AdminRoute[]): any[] {
       path: route.path,
     };
 
-    // 设置图标
+    // Set the icon.
     if (route.icon) {
       menuItem.icon = getIconComponent(route.icon);
     }
 
-    // 设置菜单隐藏属性
+    // Set menu visibility flags.
     if (route.hideInMenu) {
       menuItem.hideInMenu = route.hideInMenu;
     }
@@ -66,7 +66,7 @@ export function transformApiRoutesToMenuData(routes: API.AdminRoute[]): any[] {
       menuItem.hideChildrenInMenu = route.hideChildrenInMenu;
     }
 
-    // 递归处理子路由
+    // Recursively transform child routes.
     if (route.routes && route.routes.length > 0) {
       menuItem.routes = route.routes.map(transformRoute);
     }
@@ -78,12 +78,12 @@ export function transformApiRoutesToMenuData(routes: API.AdminRoute[]): any[] {
 }
 
 /**
- * 根据图标名称获取对应的 Ant Design 图标组件
+ * Resolve the Ant Design icon component by icon name.
  */
 function getIconComponent(iconName: string): React.ReactNode {
   const React = require('react');
 
-  // 创建图标组件的映射
+  // Map icon names to icon components.
   const iconMap: Record<string, any> = {
     CrownOutlined: require('@ant-design/icons').CrownOutlined,
     ToolOutlined: require('@ant-design/icons').ToolOutlined,
@@ -101,12 +101,12 @@ function getIconComponent(iconName: string): React.ReactNode {
     return React.createElement(IconComponent);
   }
 
-  // 默认图标
+  // Fallback icon.
   return React.createElement(require('@ant-design/icons').SmileOutlined);
 }
 
 /**
- * 获取路由和菜单数据
+ * Fetch route and menu data.
  */
 export async function getRouteAndMenuData(): Promise<{
   routeList: API.AdminRoute[];

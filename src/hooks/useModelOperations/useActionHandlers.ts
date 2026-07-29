@@ -220,13 +220,17 @@ export const useActionHandlers = ({
   const saveData = useCallback(
     async (data: Record<string, any>) => {
       try {
-        await saveModelData({
+        const response = await saveModelData({
           name: modelName,
           data,
         });
-        messageApi.success('Saved successfully');
-        onSuccess?.();
-        return true;
+        if (response?.code === 0) {
+          messageApi.success('Saved successfully');
+          onSuccess?.();
+          return true;
+        }
+        messageApi.error(response?.message || 'Save failed');
+        return false;
       } catch (error) {
         messageApi.error('Save failed');
         onError?.(error);

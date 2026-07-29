@@ -3,6 +3,7 @@
  */
 
 import {
+  CopyOutlined,
   DeleteOutlined,
   DisconnectOutlined,
   EditOutlined,
@@ -47,6 +48,7 @@ interface UseColumnGeneratorOptions {
   onUnlink?: (record: Record<string, any>) => Promise<void>;
   onDeleteRelated?: (record: Record<string, any>) => Promise<void>;
   onEditRelated?: (record: Record<string, any>) => void;
+  onCopyRelated?: (record: Record<string, any>) => Promise<void> | void;
 }
 
 export const useColumnGenerator = ({
@@ -62,6 +64,7 @@ export const useColumnGenerator = ({
   onUnlink,
   onDeleteRelated,
   onEditRelated,
+  onCopyRelated,
 }: UseColumnGeneratorOptions) => {
   const generateColumns = useCallback((): ProColumns<Record<string, any>>[] => {
     const columns: ProColumns<Record<string, any>>[] = [];
@@ -74,6 +77,9 @@ export const useColumnGenerator = ({
       | string[]
       | undefined;
     const searchRangeFields = (modelDesc.attrs as any)?.search_range_fields as
+      | string[]
+      | undefined;
+    const listEditable = (modelDesc.attrs as any)?.list_editable as
       | string[]
       | undefined;
     let fieldEntries = Object.entries(modelDesc.fields || {});
@@ -392,9 +398,6 @@ export const useColumnGenerator = ({
       }
 
       // Set editable
-      const listEditable = (modelDesc.attrs as any)?.list_editable as
-        | string[]
-        | undefined;
       if (fieldConfig.readonly) {
         column.editable = false;
       } else if (modelDesc.attrs.can_edit) {
@@ -414,8 +417,16 @@ export const useColumnGenerator = ({
 
     // Add action column
     const hasDetailAction = !!onDetail;
-    const hasInlineEditAction = modelDesc.attrs.can_edit && !onEditRelated;
+    const hasListEditableFields = listEditable
+      ? listEditable.some((fieldName) => {
+          const fieldConfig = modelDesc.fields[fieldName];
+          return fieldName !== 'id' && fieldConfig && !fieldConfig.readonly;
+        })
+      : false;
+    const hasInlineEditAction =
+      modelDesc.attrs.can_edit && !onEditRelated && hasListEditableFields;
     const hasPopupEditAction = !!onEditRelated;
+    const hasCopyAction = !!onCopyRelated;
     const hasDeleteAction = modelDesc.attrs.can_delete && !onUnlink;
     const hasUnlinkAction = !!onUnlink;
     const nonBatchActions = Object.values(modelDesc.actions || {}).filter(
@@ -427,6 +438,7 @@ export const useColumnGenerator = ({
       hasDetailAction ||
       hasInlineEditAction ||
       hasPopupEditAction ||
+      hasCopyAction ||
       hasDeleteAction ||
       hasUnlinkAction ||
       onDeleteRelated ||
@@ -436,6 +448,7 @@ export const useColumnGenerator = ({
       let actionWidth = 40;
       if (hasDetailAction) actionWidth += 70;
       if (hasInlineEditAction || hasPopupEditAction) actionWidth += 70;
+      if (hasCopyAction) actionWidth += 70;
       if (hasDeleteAction) actionWidth += 70;
       if (hasUnlinkAction) actionWidth += 80;
       if (onDeleteRelated) actionWidth += 80;
@@ -530,6 +543,23 @@ export const useColumnGenerator = ({
                 onClick={() => onEditRelated?.(record)}
               >
                 Edit
+              </Button>,
+            );
+          }
+
+          // Copy related button
+          if (onCopyRelated && !isEditing) {
+            actions.push(
+              <Button
+                key="copy-related"
+                type="link"
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={async () => {
+                  await onCopyRelated(record);
+                }}
+              >
+                Copy
               </Button>,
             );
           }
@@ -653,6 +683,7 @@ export const useColumnGenerator = ({
     onUnlink,
     onDeleteRelated,
     onEditRelated,
+    onCopyRelated,
     editableKeys,
     setEditableKeys,
     pendingUnlinkRef,

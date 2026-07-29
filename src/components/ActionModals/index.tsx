@@ -26,11 +26,11 @@ export const StringInputModal: React.FC<StringInputModalProps> = ({
 
   const handleOk = () => {
     onOk(value);
-    setValue(''); // 清空输入框
+    setValue(''); // Clear the input field
   };
 
   const handleCancel = () => {
-    setValue(''); // 清空输入框
+    setValue(''); // Clear the input field
     onCancel();
   };
 
@@ -86,16 +86,16 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
 
     onOk(files);
-    setFileList([]); // 清空文件列表
+    setFileList([]); // Clear the file list
   };
 
   const handleCancel = () => {
-    setFileList([]); // 清空文件列表
+    setFileList([]); // Clear the file list
     onCancel();
   };
 
   const uploadProps = {
-    beforeUpload: () => false, // 阻止自动上传
+    beforeUpload: () => false, // Prevent automatic upload
     multiple: true,
     fileList,
     onChange: ({ fileList: newFileList }: { fileList: UploadFile[] }) => {
@@ -145,7 +145,7 @@ export const DataTableModal: React.FC<DataTableModalProps> = ({
   columns,
   onClose,
 }) => {
-  // 如果没有提供columns，则根据数据自动生成
+  // Auto-generate columns from data when none are provided
   const autoColumns = React.useMemo(() => {
     if (columns) return columns;
 

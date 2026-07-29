@@ -51,17 +51,17 @@ const Register: FC = () => {
   const passwordStatusMap = {
     ok: (
       <div className={styles.success}>
-        <span>强度：强</span>
+        <span>Strength: Strong</span>
       </div>
     ),
     pass: (
       <div className={styles.warning}>
-        <span>强度：中</span>
+        <span>Strength: Medium</span>
       </div>
     ),
     poor: (
       <div className={styles.error}>
-        <span>强度：太短</span>
+        <span>Strength: Too short</span>
       </div>
     ),
   };
@@ -101,19 +101,19 @@ const Register: FC = () => {
   }>(register, {
     manual: true,
     onSuccess: (data, params) => {
-      // 检查新的API响应格式
+      // Check the new API response shape
       if (data.code === 0 || data.status === 'ok') {
-        message.success('注册成功！');
+        message.success('Registered successfully!');
         history.push({
           pathname: `/user/register-result?account=${params[0].mail}`,
         });
       } else {
-        message.error(data.message || '注册失败，请重试！');
+        message.error(data.message || 'Registration failed. Please try again!');
       }
     },
     onError: (error) => {
-      console.error('注册失败:', error);
-      message.error('注册失败，请重试！');
+      console.error('Registration failed:', error);
+      message.error('Registration failed. Please try again!');
     },
   });
   const onFinish = (values: Store) => {
@@ -122,18 +122,18 @@ const Register: FC = () => {
   const checkConfirm = (_: any, value: string) => {
     const promise = Promise;
     if (value && value !== form.getFieldValue('password')) {
-      return promise.reject('两次输入的密码不匹配!');
+      return promise.reject('The two passwords do not match!');
     }
     return promise.resolve();
   };
   const checkPassword = (_: any, value: string) => {
     const promise = Promise;
-    // 没有值的情况
+    // Handle empty input
     if (!value) {
       setVisible(!!value);
-      return promise.reject('请输入密码!');
+      return promise.reject('Please enter a password!');
     }
-    // 有值的情况
+    // Handle non-empty input
     if (!open) {
       setVisible(!!value);
     }
@@ -167,22 +167,22 @@ const Register: FC = () => {
   };
   return (
     <div className={styles.main}>
-      <h3>注册</h3>
+      <h3>Register</h3>
       <Form form={form} name="UserRegister" onFinish={onFinish}>
         <FormItem
           name="email"
           rules={[
             {
               required: true,
-              message: '请输入邮箱地址!',
+              message: 'Please enter your email address!',
             },
             {
               type: 'email',
-              message: '邮箱地址格式错误!',
+              message: 'Invalid email address format!',
             },
           ]}
         >
-          <Input size="large" placeholder="邮箱" />
+          <Input size="large" placeholder="Email" />
         </FormItem>
         <Popover
           getPopupContainer={(node) => {
@@ -205,7 +205,10 @@ const Register: FC = () => {
                     marginTop: 10,
                   }}
                 >
-                  <span>请至少输入 6 个字符。请不要使用容易被猜到的密码。</span>
+                  <span>
+                    Please enter at least 6 characters. Avoid using an
+                    easy-to-guess password.
+                  </span>
                 </div>
               </div>
             )
@@ -232,7 +235,7 @@ const Register: FC = () => {
             <Input
               size="large"
               type="password"
-              placeholder="至少6位密码，区分大小写"
+              placeholder="At least 6 characters, case-sensitive"
             />
           </FormItem>
         </Popover>
@@ -241,25 +244,25 @@ const Register: FC = () => {
           rules={[
             {
               required: true,
-              message: '确认密码',
+              message: 'Confirm password',
             },
             {
               validator: checkConfirm,
             },
           ]}
         >
-          <Input size="large" type="password" placeholder="确认密码" />
+          <Input size="large" type="password" placeholder="Confirm password" />
         </FormItem>
         <FormItem
           name="mobile"
           rules={[
             {
               required: true,
-              message: '请输入手机号!',
+              message: 'Please enter your phone number!',
             },
             {
               pattern: /^\d{11}$/,
-              message: '手机号格式错误!',
+              message: 'Invalid phone number format!',
             },
           ]}
         >
@@ -276,7 +279,7 @@ const Register: FC = () => {
               <Option value="87">+87</Option>
             </Select>
 
-            <Input size="large" placeholder="手机号" />
+            <Input size="large" placeholder="Phone number" />
           </Space.Compact>
         </FormItem>
         <Row gutter={8}>
@@ -286,11 +289,11 @@ const Register: FC = () => {
               rules={[
                 {
                   required: true,
-                  message: '请输入验证码!',
+                  message: 'Please enter the verification code!',
                 },
               ]}
             >
-              <Input size="large" placeholder="验证码" />
+              <Input size="large" placeholder="Verification code" />
             </FormItem>
           </Col>
           <Col span={8}>
@@ -300,7 +303,7 @@ const Register: FC = () => {
               className={styles.getCaptcha}
               onClick={onGetCaptcha}
             >
-              {count ? `${count} s` : '获取验证码'}
+              {count ? `${count} s` : 'Get code'}
             </Button>
           </Col>
         </Row>
@@ -313,10 +316,10 @@ const Register: FC = () => {
               type="primary"
               htmlType="submit"
             >
-              <span>注册</span>
+              <span>Register</span>
             </Button>
             <Link to={`/${PATH_PREFIX}/user/login`}>
-              <span>使用已有账户登录</span>
+              <span>Sign in with an existing account</span>
             </Link>
           </div>
         </FormItem>

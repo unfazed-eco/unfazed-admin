@@ -30,10 +30,7 @@ const ProFormEditorJS = forwardRef<EditorJSRef, ProFormEditorJSProps>(
       setData: (value: string) => editorRef.current?.setData(value),
     }));
 
-    const editorProps: EditorJSProps = {
-      height: fieldProps?.height ?? 300,
-      ...fieldProps,
-    };
+    const editorProps: EditorJSProps = { ...fieldProps };
 
     return (
       <ProFormItem

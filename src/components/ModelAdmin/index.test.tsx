@@ -52,7 +52,7 @@ jest.mock('@/components', () => {
 describe('ModelAdmin', () => {
   it('shows model name required message when modelName is empty', () => {
     render(<ModelAdmin modelName={''} />);
-    expect(screen.getByText('请指定模型名称')).toBeTruthy();
+    expect(screen.getByText('Please specify a model name')).toBeTruthy();
     expect(screen.getByText('Model name is required')).toBeTruthy();
   });
 

@@ -59,6 +59,11 @@ describe('M2MSelectionModal', () => {
           field_type: 'DatetimeField',
           show: true,
         },
+        start_time: {
+          name: 'Start Time',
+          field_type: 'TimeField',
+          show: true,
+        },
       },
     },
     relation: {
@@ -75,6 +80,10 @@ describe('M2MSelectionModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedTableProps = undefined;
+    localStorage.setItem(
+      'unfazed_app_settings',
+      JSON.stringify({ timeZone: 'UTC+8' }),
+    );
   });
 
   it('loads initial selection and handles request success', async () => {
@@ -92,7 +101,8 @@ describe('M2MSelectionModal', () => {
               name: 'A',
               active: true,
               age: 5,
-              created_at: '2026-01-01',
+              created_at: '2026-01-01T00:00:00Z',
+              start_time: '2026-01-01T00:00:00Z',
             },
           ],
           count: 1,
@@ -126,11 +136,28 @@ describe('M2MSelectionModal', () => {
     });
     expect(result).toEqual({
       data: [
-        { id: 1, name: 'A', active: true, age: 5, created_at: '2026-01-01' },
+        {
+          id: 1,
+          name: 'A',
+          active: true,
+          age: 5,
+          created_at: '2026-01-01T00:00:00Z',
+          start_time: '2026-01-01T00:00:00Z',
+        },
       ],
       total: 1,
       success: true,
     });
+
+    const byKey = Object.fromEntries(
+      capturedTableProps.columns.map((c: any) => [c.key, c]),
+    );
+    expect(
+      byKey.created_at.render(null, { created_at: '2026-01-01T00:00:00Z' }),
+    ).toBe('2026-01-01 00:00:00');
+    expect(
+      byKey.start_time.render(null, { start_time: '2026-01-01T00:00:00Z' }),
+    ).toBe('00:00:00');
   });
 
   it('handles row selection, save and failure branches', async () => {

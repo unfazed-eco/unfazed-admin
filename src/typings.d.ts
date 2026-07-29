@@ -17,7 +17,7 @@ declare module 'react-fittext';
 
 declare const REACT_APP_ENV: 'test' | 'dev' | 'pre' | false;
 
-// API 类型定义
+// API type definitions
 declare namespace API {
   type CurrentUser = {
     name?: string;
@@ -38,7 +38,7 @@ declare namespace API {
     };
     address?: string;
     phone?: string;
-    // 新增字段以匹配 OpenAPI 规范
+    // Additional fields to match the OpenAPI contract
     account?: string;
     roles?: { id: number; name: string }[];
     groups?: { id: number; name: string }[];
@@ -49,7 +49,7 @@ declare namespace API {
     status?: string;
     type?: string;
     currentAuthority?: string;
-    // 新增字段以匹配 OpenAPI 规范
+    // Additional fields to match the OpenAPI contract
     code?: number;
     message?: string;
     data?: {
@@ -83,7 +83,7 @@ declare namespace API {
 
   type RuleList = {
     data?: RuleListItem[];
-    /** 列表的内容总数 */
+    /** Total number of items in the list */
     total?: number;
     success?: boolean;
   };
@@ -98,7 +98,7 @@ declare namespace API {
     password?: string;
     autoLogin?: boolean;
     type?: string;
-    // 新增字段以匹配 OpenAPI 规范
+    // Additional fields to match the OpenAPI contract
     account?: string;
     platform?: string;
     extra?: Record<string, any>;
@@ -118,20 +118,21 @@ declare namespace API {
   };
 
   type AdminSettings = {
-    // ProLayout 布局相关字段
-    title: string;
+    // ProLayout-related fields
+    title?: string;
     navTheme: string;
     colorPrimary: string;
     layout: string;
     contentWidth: string;
     fixedHeader: boolean;
     colorWeak: boolean;
-    logo: string;
+    logo?: string;
+    favicon?: string;
     fixSiderbar?: boolean;
     pwa?: boolean;
     iconfontUrl?: string;
     showWatermark?: boolean;
-    // 应用级别配置字段
+    // App-level configuration fields
     pageSize: number;
     timeZone: string;
     apiPrefix: string;
@@ -139,21 +140,22 @@ declare namespace API {
     version: string;
     defaultLoginType: boolean;
     extra?: Record<string, any>;
+    EXTRA?: Record<string, any>;
     authPlugins?: Record<string, any>[];
   };
 
   type ErrorResponse = {
-    /** 业务约定的错误码 */
+    /** Business-level error code */
     errorCode: string;
-    /** 业务上的错误信息 */
+    /** Business-level error message */
     errorMessage?: string;
-    /** 业务上的请求是否成功 */
+    /** Whether the request succeeded at the business layer */
     success?: boolean;
   };
 
   type NoticeIconList = {
     data?: NoticeIconItem[];
-    /** 列表的内容总数 */
+    /** Total number of items in the list */
     total?: number;
     success?: boolean;
   };
@@ -173,10 +175,10 @@ declare namespace API {
     type?: NoticeIconItemType;
   };
 
-  // 路由相关类型定义，基于 OpenAPI 规范
+  // Route-related type definitions based on the OpenAPI contract
   type AdminRoute = {
-    name: string; // 模型名称，用于 model-desc/model-data API
-    label?: string; // 显示名称，用于侧边栏菜单
+    name: string; // Model name used by model-desc/model-data APIs
+    label?: string; // Display name used in the sidebar menu
     path: string;
     component?: string | null;
     routes?: AdminRoute[];
@@ -191,7 +193,7 @@ declare namespace API {
     data: AdminRoute[];
   };
 
-  // Model Admin 相关类型定义，基于 OpenAPI 规范
+  // Model Admin-related type definitions based on the OpenAPI contract
   type AdminField = {
     field_type:
       | 'CharField'
@@ -238,6 +240,7 @@ declare namespace API {
     list_sort?: string[];
     list_filter?: string[];
     list_search?: string[];
+    editor_fields?: string[];
     list_order?: string[];
     list_editable?: string[];
     list_display?: string[];
@@ -345,6 +348,7 @@ declare namespace API {
     list_sort?: string[];
     list_filter?: string[];
     list_search?: string[];
+    editor_fields?: string[];
     list_order?: string[];
     list_editable?: string[];
     list_display?: string[];
@@ -399,4 +403,9 @@ declare module '@ckeditor/ckeditor5-react' {
 declare module '@ckeditor/ckeditor5-build-classic' {
   const ClassicEditor: any;
   export default ClassicEditor;
+}
+
+declare module '@ckeditor/ckeditor5-build-decoupled-document' {
+  const DecoupledEditor: any;
+  export default DecoupledEditor;
 }

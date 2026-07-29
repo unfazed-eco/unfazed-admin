@@ -1,5 +1,7 @@
+import defaultLayoutSettings from '../../config/defaultSettings';
+
 /**
- * 应用级别设置类型定义
+ * App-level settings type definition
  */
 export interface AppSettings {
   pageSize: number;
@@ -12,11 +14,11 @@ export interface AppSettings {
 }
 
 /**
- * 默认应用设置
+ * Default app settings
  */
 export const defaultAppSettings: AppSettings = {
   pageSize: 20,
-  timeZone: 'Asia/Shanghai',
+  timeZone: 'UTC',
   apiPrefix: '/api',
   debug: false,
   version: '1.0.0',
@@ -25,7 +27,7 @@ export const defaultAppSettings: AppSettings = {
 };
 
 /**
- * 获取应用设置
+ * Read app settings
  * @returns AppSettings
  */
 export const getAppSettings = (): AppSettings => {
@@ -42,8 +44,8 @@ export const getAppSettings = (): AppSettings => {
 };
 
 /**
- * 设置应用配置
- * @param settings 部分或完整的应用设置
+ * Update app settings
+ * @param settings Partial or complete app settings
  */
 export const setAppSettings = (settings: Partial<AppSettings>): void => {
   try {
@@ -56,7 +58,7 @@ export const setAppSettings = (settings: Partial<AppSettings>): void => {
 };
 
 /**
- * 获取API前缀
+ * Get API prefix
  * @returns string
  */
 export const getApiPrefix = (): string => {
@@ -64,7 +66,7 @@ export const getApiPrefix = (): string => {
 };
 
 /**
- * 获取分页大小
+ * Get page size
  * @returns number
  */
 export const getPageSize = (): number => {
@@ -72,7 +74,7 @@ export const getPageSize = (): number => {
 };
 
 /**
- * 获取时区
+ * Get time zone
  * @returns string
  */
 export const getTimeZone = (): string => {
@@ -80,7 +82,7 @@ export const getTimeZone = (): string => {
 };
 
 /**
- * 获取调试模式
+ * Get debug mode
  * @returns boolean
  */
 export const getDebugMode = (): boolean => {
@@ -88,7 +90,7 @@ export const getDebugMode = (): boolean => {
 };
 
 /**
- * 获取应用版本
+ * Get app version
  * @returns string
  */
 export const getAppVersion = (): string => {
@@ -96,7 +98,7 @@ export const getAppVersion = (): string => {
 };
 
 /**
- * 获取扩展配置
+ * Get extra settings
  * @returns Record<string, any>
  */
 export const getExtraSettings = (): Record<string, any> => {
@@ -104,9 +106,30 @@ export const getExtraSettings = (): Record<string, any> => {
 };
 
 /**
- * 获取认证插件配置
+ * Get auth plugin settings
  * @returns Record<string, any>[]
  */
 export const getAuthPlugins = (): Record<string, any>[] => {
   return getAppSettings().authPlugins || [];
+};
+
+/**
+ * Update the browser tab favicon
+ */
+export const setDocumentFavicon = (href?: string): void => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const iconHref = href || defaultLayoutSettings.logo;
+  let link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    link.type = 'image/png';
+    document.head.appendChild(link);
+  }
+
+  link.href = iconHref;
 };

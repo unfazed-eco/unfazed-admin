@@ -40,6 +40,8 @@ export interface CommonProTableProps {
   onDeleteRelated?: (record: Record<string, any>) => Promise<void>;
   /** Edit related record callback (for popup edit flows, e.g. bk_fk) */
   onEditRelated?: (record: Record<string, any>) => void;
+  /** Copy related record callback (for bk_fk relations) */
+  onCopyRelated?: (record: Record<string, any>) => Promise<void> | void;
   /** Data request function (used when data is not provided) */
   onRequest?: (
     params: any,

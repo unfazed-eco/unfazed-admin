@@ -4,20 +4,15 @@ import {
   ProFormCheckbox,
   ProFormText,
 } from '@ant-design/pro-components';
-import {
-  FormattedMessage,
-  Helmet,
-  SelectLang,
-  useIntl,
-  useModel,
-} from '@umijs/max';
+import { FormattedMessage, Helmet, useIntl, useModel } from '@umijs/max';
 import { Alert, App, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Footer } from '@/components';
+import { Footer, SelectLang } from '@/components';
 import { getAdminSettings, login } from '@/services/api';
 import { getRouteAndMenuData } from '@/utils/routeManager';
+import { setAppSettings, setDocumentFavicon } from '@/utils/settings';
 import { PATH_PREFIX } from '../../../../config/constants';
 import Settings from '../../../../config/defaultSettings';
 
@@ -72,13 +67,13 @@ const ActionIcons: React.FC<{
       );
     }
 
-    // 直接跳转到后端重定向接口，避免XHR重定向触发跨域错误
+    // Redirect directly to the backend redirect endpoint to avoid XHR CORS issues
     window.location.href = `/api/auth/oauth-login-redirect?platform=${encodeURIComponent(
       platform,
     )}`;
   };
 
-  // 如果没有OAuth插件数据，不渲染任何内容
+  // Do not render when no OAuth plugin metadata is available
   if (!authPlugins || authPlugins.length === 0) {
     return null;
   }
@@ -96,11 +91,11 @@ const ActionIcons: React.FC<{
             cursor: 'pointer',
             borderRadius: '50%',
             marginLeft: index > 0 ? 8 : 0,
-            objectFit: 'contain', // 确保图标比例不变形
-            backgroundColor: '#fff', // 添加白色背景，适配透明图标
-            border: '1px solid #f0f0f0', // 添加淡边框，增强视觉效果
-            padding: '2px', // 添加内边距，避免图标贴边
-            transition: 'all 0.3s ease', // 添加过渡动画
+            objectFit: 'contain', // Preserve icon aspect ratio
+            backgroundColor: '#fff', // Add a white backdrop for transparent icons
+            border: '1px solid #f0f0f0', // Add a soft border for clarity
+            padding: '2px', // Add spacing so icons do not touch the edge
+            transition: 'all 0.3s ease', // Smooth hover transition
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
@@ -111,19 +106,20 @@ const ActionIcons: React.FC<{
             e.currentTarget.style.borderColor = '#f0f0f0';
           }}
           onClick={() => handleOAuthLogin(plugin.platform)}
-          title={`使用 ${plugin.platform} 登录`}
+          title={`Sign in with ${plugin.platform}`}
         />
       ))}
     </>
   );
 };
 
-const Lang = () => {
+const Lang: React.FC<{ languages?: string[] }> = ({ languages }) => {
   const { styles } = useStyles();
+  const fallbackLanguages = ['en-US'];
 
   return (
     <div className={styles.lang} data-lang>
-      {SelectLang && <SelectLang />}
+      {SelectLang && <SelectLang languages={languages ?? fallbackLanguages} />}
     </div>
   );
 };
@@ -150,33 +146,61 @@ const Login: React.FC = () => {
     API.AdminSettings['authPlugins']
   >([]);
   const [defaultLoginType, setDefaultLoginType] = useState<boolean>(false);
+  const [loginSettings, setLoginSettings] = useState({
+    logo: Settings.logo,
+    title: Settings.title,
+  });
+  const [languages, setLanguages] = useState<string[] | undefined>();
   const { initialState: _initialState, setInitialState } =
     useModel('@@initialState');
   const { styles } = useStyles();
   const { message } = App.useApp();
   const intl = useIntl();
+  const supportedLanguages = React.useMemo(() => ['en-US'], []);
 
-  // 初始化获取OAuth认证插件信息
+  // Initialize OAuth plugin metadata
   useEffect(() => {
     const initAuthPlugins = async () => {
       try {
-        // 先从localStorage获取
+        // Read cached plugin metadata from localStorage first
         const savedAuthPlugins = localStorage.getItem('authPlugins');
         if (savedAuthPlugins) {
           setAuthPlugins(JSON.parse(savedAuthPlugins));
         }
 
-        // 然后从API获取最新的
+        // Then refresh from the API
         const response = await getAdminSettings({
           skipErrorHandler: true,
         });
-        if (response.code === 0 && response.data?.authPlugins) {
-          localStorage.setItem(
-            'authPlugins',
-            JSON.stringify(response.data.authPlugins),
-          );
-          setAuthPlugins(response.data.authPlugins);
-          setDefaultLoginType(response.data.defaultLoginType);
+        if (response.code === 0) {
+          const apiSettings = response.data || {};
+          const nextAuthPlugins = apiSettings.authPlugins || [];
+          const nextLogo = apiSettings.logo || Settings.logo;
+          const nextFavicon =
+            apiSettings.iconfontUrl || apiSettings.favicon || nextLogo;
+
+          const nextExtra = apiSettings.extra ?? apiSettings.EXTRA;
+          localStorage.setItem('authPlugins', JSON.stringify(nextAuthPlugins));
+          setAppSettings({
+            extra: nextExtra,
+            authPlugins: nextAuthPlugins,
+          });
+          setAuthPlugins(nextAuthPlugins);
+          setDefaultLoginType(apiSettings.defaultLoginType ?? false);
+          setDocumentFavicon(nextFavicon);
+          setLoginSettings({
+            logo: nextLogo,
+            title: apiSettings.title || Settings.title,
+          });
+          if (Array.isArray(nextExtra?.LANGUAGE)) {
+            setLanguages(
+              nextExtra.LANGUAGE.filter(
+                (language: unknown): language is string =>
+                  typeof language === 'string' &&
+                  supportedLanguages.includes(language),
+              ),
+            );
+          }
         }
       } catch (error) {
         console.warn('Failed to fetch auth plugins:', error);
@@ -191,7 +215,7 @@ const Login: React.FC = () => {
     platform?: string,
   ) => {
     if (loginData) {
-      // 转换登录返回的数据为 CurrentUser 格式
+      // Normalize login response into the CurrentUser shape
       const userInfo: API.CurrentUser = {
         name:
           loginData.extra?.nickname ||
@@ -204,26 +228,38 @@ const Login: React.FC = () => {
         roles: loginData.roles,
         groups: loginData.groups,
         extra: { ...loginData.extra, platform: platform || 'default' },
-        // 设置访问权限
+        // Set access level
         access: loginData.roles?.[0]?.name || 'user',
       };
 
-      // 获取用户设置
+      // Fetch user settings
       let settings = Settings;
       try {
         const response = await getAdminSettings({
           skipErrorHandler: true,
         });
         if (response.code === 0) {
-          // 合并API设置和默认设置，保留前端特有字段
+          const nextFavicon =
+            response.data.iconfontUrl ||
+            response.data.favicon ||
+            response.data.logo ||
+            Settings.logo;
+          // Merge API settings with defaults while preserving frontend-only fields
           settings = {
             ...response.data,
+            logo: response.data.logo || Settings.logo,
+            title: response.data.title || Settings.title,
+            favicon: nextFavicon,
             fixSiderbar: response.data.fixSiderbar ?? Settings.fixSiderbar,
             pwa: response.data.pwa ?? Settings.pwa,
-            iconfontUrl: response.data.iconfontUrl ?? Settings.iconfontUrl,
           } as any;
+          setDocumentFavicon(nextFavicon);
+          setAppSettings({
+            extra: response.data.extra ?? response.data.EXTRA,
+            authPlugins: response.data.authPlugins,
+          });
 
-          // 保存OAuth认证插件信息到本地存储
+          // Persist OAuth plugin metadata locally
           if (response.data?.authPlugins) {
             localStorage.setItem(
               'authPlugins',
@@ -237,19 +273,22 @@ const Login: React.FC = () => {
         );
       }
 
-      // 获取动态路由和菜单数据（只有登录用户才能获取）
+      // Fetch dynamic routes/menu data, available only after login
       let routeList: API.AdminRoute[] = [];
       let menuData: any[] = [];
       try {
         const routeAndMenuData = await getRouteAndMenuData();
         routeList = routeAndMenuData.routeList;
         menuData = routeAndMenuData.menuData;
-        console.log('登录成功，已获取动态路由:', routeList);
+        console.log('Sign-in succeeded, loaded dynamic routes:', routeList);
       } catch (error) {
-        console.warn('获取动态路由失败，使用空路由:', error);
+        console.warn(
+          'Failed to load dynamic routes, using an empty route list:',
+          error,
+        );
       }
 
-      // 保存用户信息到本地存储
+      // Persist user info locally
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
       localStorage.setItem('userSettings', JSON.stringify(settings));
 
@@ -267,17 +306,17 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (values: API.LoginParams) => {
     try {
-      // 登录
+      // Submit login request
       const msg = await login({ ...values, type });
-      // 检查新的API响应格式
+      // Handle the new API response shape
       if (msg.code === 0 || msg.status === 'ok') {
         const defaultLoginSuccessMessage = intl.formatMessage({
           id: 'pages.login.success',
-          defaultMessage: '登录成功！',
+          defaultMessage: 'Signed in successfully!',
         });
         message.success(defaultLoginSuccessMessage);
 
-        // 直接使用登录返回的用户信息，不再调用 fetchUserInfo
+        // Use login response data directly instead of calling fetchUserInfo
         await updateUserInfoAndSettings(msg.data, values.platform || 'default');
 
         const urlParams = new URL(window.location.href).searchParams;
@@ -285,16 +324,16 @@ const Login: React.FC = () => {
         return;
       }
       console.log(msg);
-      // 如果失败去设置用户错误信息
+      // Populate error state on failure
       setUserLoginState({
         status: 'error',
         type: type,
-        message: msg.message || '登录失败',
+        message: msg.message || 'Sign-in failed',
       });
     } catch (error) {
       const defaultLoginFailureMessage = intl.formatMessage({
         id: 'pages.login.failure',
-        defaultMessage: '登录失败，请重试！',
+        defaultMessage: 'Sign-in failed. Please try again!',
       });
       console.log(error);
       message.error(defaultLoginFailureMessage);
@@ -308,12 +347,12 @@ const Login: React.FC = () => {
         <title>
           {intl.formatMessage({
             id: 'menu.login',
-            defaultMessage: '登录页',
+            defaultMessage: 'Sign In',
           })}
-          {Settings.title && ` - ${Settings.title}`}
+          {loginSettings.title && ` - ${loginSettings.title}`}
         </title>
       </Helmet>
-      <Lang />
+      <Lang languages={languages} />
       <div
         style={{
           flex: '1',
@@ -325,13 +364,8 @@ const Login: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={
-            <img
-              alt="logo"
-              src="https://unfazed-eco.github.io/images/uz-logo.png"
-            />
-          }
-          title="Unfazed Admin"
+          logo={<img alt="logo" src={loginSettings.logo} />}
+          title={loginSettings.title}
           subTitle={intl.formatMessage({
             id: 'pages.layouts.userLayout.title',
           })}
@@ -345,14 +379,14 @@ const Login: React.FC = () => {
                     key="oauth-actions"
                     style={{
                       display: 'flex',
-                      alignItems: 'center', // 垂直居中
-                      gap: 4, // 控制文字和图标之间的间距
+                      alignItems: 'center', // Vertically center the content
+                      gap: 4, // Control the spacing between text and icons
                     }}
                   >
                     <FormattedMessage
                       key="loginWith"
                       id="pages.login.loginWith"
-                      defaultMessage="其他登录方式"
+                      defaultMessage="Other sign-in options"
                     />
                     <ActionIcons key="icons" authPlugins={authPlugins} />
                   </div>,
@@ -373,7 +407,7 @@ const Login: React.FC = () => {
                 key: 'account',
                 label: intl.formatMessage({
                   id: 'pages.login.accountLogin.tab',
-                  defaultMessage: '账户密码登录',
+                  defaultMessage: 'Account sign-in',
                 }),
               },
             ]}
@@ -385,7 +419,8 @@ const Login: React.FC = () => {
               <LoginMessage
                 content={intl.formatMessage({
                   id: 'pages.login.accountLogin.errorMessage',
-                  defaultMessage: '账户或密码错误(admin/ant.design)',
+                  defaultMessage:
+                    'Incorrect username or password (admin/ant.design)',
                 })}
               />
             )}
@@ -399,7 +434,7 @@ const Login: React.FC = () => {
                 }}
                 placeholder={intl.formatMessage({
                   id: 'pages.login.username.placeholder',
-                  defaultMessage: '用户名: admin or user',
+                  defaultMessage: 'Username: admin or user',
                 })}
                 rules={[
                   {
@@ -407,7 +442,7 @@ const Login: React.FC = () => {
                     message: (
                       <FormattedMessage
                         id="pages.login.username.required"
-                        defaultMessage="请输入用户名!"
+                        defaultMessage="Please enter your username!"
                       />
                     ),
                   },
@@ -421,7 +456,7 @@ const Login: React.FC = () => {
                 }}
                 placeholder={intl.formatMessage({
                   id: 'pages.login.password.placeholder',
-                  defaultMessage: '密码: admin',
+                  defaultMessage: 'Password: admin',
                 })}
                 rules={[
                   {
@@ -429,7 +464,7 @@ const Login: React.FC = () => {
                     message: (
                       <FormattedMessage
                         id="pages.login.password.required"
-                        defaultMessage="请输入密码！"
+                        defaultMessage="Please enter your password!"
                       />
                     ),
                   },
@@ -446,7 +481,7 @@ const Login: React.FC = () => {
               <ProFormCheckbox noStyle name="autoLogin">
                 <FormattedMessage
                   id="pages.login.rememberMe"
-                  defaultMessage="自动登录"
+                  defaultMessage="Stay signed in"
                 />
               </ProFormCheckbox>
               <a
@@ -456,7 +491,7 @@ const Login: React.FC = () => {
               >
                 <FormattedMessage
                   id="pages.login.forgotPassword"
-                  defaultMessage="忘记密码"
+                  defaultMessage="Forgot password"
                 />
               </a>
             </div>

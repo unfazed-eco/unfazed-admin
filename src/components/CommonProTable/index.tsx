@@ -36,6 +36,122 @@ import type { CommonProTableProps } from './types';
 import { useColumnGenerator } from './useColumnGenerator';
 import { useTableState } from './useTableState';
 
+const MIN_COLUMN_WIDTH = 80;
+const getColumnStorageKey = (modelName: string) =>
+  `unfazed-admin:table-column-widths:${modelName}`;
+
+const readStoredColumnWidths = (modelName: string): Record<string, number> => {
+  if (typeof window === 'undefined') return {};
+
+  try {
+    const raw = window.localStorage.getItem(getColumnStorageKey(modelName));
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    return Object.entries(parsed).reduce<Record<string, number>>(
+      (acc, [key, value]) => {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {},
+    );
+  } catch {
+    return {};
+  }
+};
+
+interface ResizableHeaderCellProps
+  extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  width?: number;
+  columnKey?: string;
+  onResizeColumn?: (columnKey: string, width: number) => void;
+}
+
+const ResizableHeaderCell: React.FC<ResizableHeaderCellProps> = ({
+  width,
+  columnKey,
+  onResizeColumn,
+  children,
+  style,
+  ...restProps
+}) => {
+  const stopResizeEvent = useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation?.();
+    },
+    [],
+  );
+
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      if (!columnKey || !width || !onResizeColumn) return;
+
+      stopResizeEvent(event);
+
+      const startX = event.clientX;
+      const headerCell = event.currentTarget.parentElement;
+      const currentWidth = headerCell?.getBoundingClientRect().width;
+      const startWidth =
+        currentWidth && Number.isFinite(currentWidth) ? currentWidth : width;
+      const originalCursor = document.body.style.cursor;
+      const originalUserSelect = document.body.style.userSelect;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const nextWidth = Math.max(
+          MIN_COLUMN_WIDTH,
+          startWidth + moveEvent.clientX - startX,
+        );
+        onResizeColumn(columnKey, nextWidth);
+      };
+
+      const handleMouseUp = () => {
+        document.body.style.cursor = originalCursor;
+        document.body.style.userSelect = originalUserSelect;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp, {
+          capture: true,
+        });
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp, { capture: true });
+    },
+    [columnKey, onResizeColumn, stopResizeEvent, width],
+  );
+
+  return (
+    <th
+      {...restProps}
+      style={{
+        ...style,
+        width,
+        minWidth: width,
+        position: 'relative',
+      }}
+    >
+      {children}
+      {columnKey && width ? (
+        <span
+          aria-hidden="true"
+          className="common-pro-table-column-resize-handle"
+          onClick={stopResizeEvent}
+          onMouseDown={handleMouseDown}
+          onMouseUp={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        />
+      ) : null}
+    </th>
+  );
+};
+
 const CommonProTable: React.FC<CommonProTableProps> = ({
   modelDesc,
   modelName,
@@ -51,12 +167,16 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   onBatchAddRelated,
   onDeleteRelated,
   onEditRelated,
+  onCopyRelated,
   onRequest,
   tableProps = {},
   actionRef,
 }) => {
   const formRef = useRef<ProFormInstance>(null as any);
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() =>
+    readStoredColumnWidths(modelName),
+  );
 
   // Table state management
   const {
@@ -82,6 +202,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
     onUnlink,
     onDeleteRelated,
     onEditRelated,
+    onCopyRelated,
   });
 
   // Generate batch action menu items
@@ -183,6 +304,51 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   ]);
 
   const columns = useMemo(() => generateColumns(), [generateColumns]);
+  const handleResizeColumn = useCallback((columnKey: string, width: number) => {
+    setColumnWidths((prev) => ({
+      ...prev,
+      [columnKey]: Math.round(width),
+    }));
+  }, []);
+  const resizableColumns = useMemo(() => {
+    return columns.map((column: any) => {
+      const columnKey = String(column.key ?? column.dataIndex ?? '');
+      const isActionColumn =
+        column.dataIndex === 'option' ||
+        column.valueType === 'option' ||
+        column.fixed === 'right';
+
+      if (!columnKey || isActionColumn) {
+        return column;
+      }
+
+      const width =
+        columnWidths[columnKey] ||
+        (typeof column.width === 'number' ? column.width : 150);
+      const existingOnHeaderCell = column.onHeaderCell;
+
+      return {
+        ...column,
+        width,
+        onHeaderCell: (...args: any[]) => ({
+          ...existingOnHeaderCell?.(...args),
+          width,
+          columnKey,
+          onResizeColumn: handleResizeColumn,
+        }),
+      };
+    });
+  }, [columnWidths, columns, handleResizeColumn]);
+  const tableScrollX = useMemo(() => {
+    const totalWidth = resizableColumns.reduce((sum: number, column: any) => {
+      if (typeof column.width === 'number' && Number.isFinite(column.width)) {
+        return sum + column.width;
+      }
+      return sum + 150;
+    }, 0);
+
+    return Math.max(totalWidth, 1);
+  }, [resizableColumns]);
 
   // Check for searchable fields and batch actions
   const canSearch = modelDesc.attrs?.can_search !== false;
@@ -205,6 +371,37 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
   useEffect(() => {
     setIsHelpExpanded(false);
   }, [helpText, modelName]);
+
+  useEffect(() => {
+    setColumnWidths(readStoredColumnWidths(modelName));
+  }, [modelName]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      window.localStorage.setItem(
+        getColumnStorageKey(modelName),
+        JSON.stringify(columnWidths),
+      );
+    } catch {
+      // Ignore storage failures; resizing should still work for this render.
+    }
+  }, [columnWidths, modelName]);
+
+  const { components: tablePropsComponents, ...restTableProps } =
+    tableProps || {};
+  const tableComponents = tablePropsComponents || {};
+  const mergedComponents = useMemo(
+    () => ({
+      ...tableComponents,
+      header: {
+        ...tableComponents.header,
+        cell: tableComponents.header?.cell || ResizableHeaderCell,
+      },
+    }),
+    [tableComponents],
+  );
 
   const headerTitle = useMemo(() => {
     if (!hasHelpText) return modelName;
@@ -249,6 +446,20 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
           }
           .common-pro-table [class*='ant-pro-query-filter-collapse-button'] {
             white-space: nowrap !important;
+          }
+          .common-pro-table-column-resize-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 12px;
+            height: 100%;
+            cursor: col-resize;
+            pointer-events: auto;
+            user-select: none;
+            z-index: 30;
+          }
+          .common-pro-table-column-resize-handle:hover {
+            background: rgba(22, 119, 255, 0.18);
           }
         `}
       </style>
@@ -333,7 +544,8 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
         request={data ? undefined : onRequest}
         beforeSearchSubmit={handleSearchSubmit}
         dataSource={data ? (filteredData ?? data) : undefined}
-        columns={columns}
+        columns={resizableColumns}
+        components={mergedComponents}
         editable={
           modelDesc.attrs.can_edit
             ? {
@@ -350,9 +562,10 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
             : undefined
         }
         scroll={{
-          x: 'max-content',
+          x: tableScrollX,
           y: 'calc(100vh - 400px)',
         }}
+        tableLayout="fixed"
         pagination={{
           showSizeChanger: true,
           showQuickJumper: true,
@@ -363,7 +576,7 @@ const CommonProTable: React.FC<CommonProTableProps> = ({
           density: true,
           setting: true,
         }}
-        {...tableProps}
+        {...restTableProps}
       />
     </>
   );

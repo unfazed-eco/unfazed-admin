@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import React from 'react';
 import { renderFormField, renderFormFields } from './formFieldRenderer';
 
@@ -50,6 +51,10 @@ describe('formFieldRenderer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.setItem(
+      'unfazed_app_settings',
+      JSON.stringify({ timeZone: 'UTC+8' }),
+    );
   });
 
   it('renders CharField as select when choices exist', () => {
@@ -118,12 +123,15 @@ describe('formFieldRenderer', () => {
 
     expect(element.type.displayName).toBe('ProFormDateTimePicker');
     expect(element.props.convertValue(undefined)).toBeUndefined();
-    expect(element.props.convertValue(1700000000).valueOf()).toBe(
-      1700000000 * 1000,
-    );
+    expect(
+      element.props.convertValue(1700000000).format('YYYY-MM-DD HH:mm:ss'),
+    ).toBe('2023-11-15 06:13:20');
+    expect(
+      element.props.convertValue('1700000000').format('YYYY-MM-DD HH:mm:ss'),
+    ).toBe('2023-11-15 06:13:20');
 
     const thirteen = element.props.convertValue(1700000000000);
-    expect(thirteen.valueOf()).toBe(1700000000000);
+    expect(thirteen.format('YYYY-MM-DD HH:mm:ss')).toBe('2023-11-15 06:13:20');
 
     expect(element.props.transform(undefined)).toEqual({
       created_at: undefined,
@@ -131,6 +139,44 @@ describe('formFieldRenderer', () => {
     expect(element.props.transform('2026-01-01 00:00:00')).toEqual({
       created_at: expect.any(Number),
     });
+    expect(element.props.transform(1700000000)).toEqual({
+      created_at: 1700000000,
+    });
+    expect(element.props.transform('1700000000')).toEqual({
+      created_at: 1700000000,
+    });
+    expect(element.props.transform(1700000000000)).toEqual({
+      created_at: 1700000000,
+    });
+  });
+
+  it('displays date/time strings directly without time-zone conversion', () => {
+    const dateElement: any = renderFormField('d', { field_type: 'DateField' });
+    const timeElement: any = renderFormField('t', { field_type: 'TimeField' });
+
+    // DateField/TimeField are wall-clock strings; no time-zone offset applied.
+    expect(
+      dateElement.props.convertValue('2023-11-14').format('YYYY-MM-DD'),
+    ).toBe('2023-11-14');
+    expect(timeElement.props.convertValue('14:30:00').format('HH:mm:ss')).toBe(
+      '14:30:00',
+    );
+  });
+
+  it('submits date/time fields as wall-clock strings without conversion', () => {
+    const dateElement: any = renderFormField('d', { field_type: 'DateField' });
+    const timeElement: any = renderFormField('t', { field_type: 'TimeField' });
+
+    expect(dateElement.props.transform(dayjs('2023-11-14 06:13:20'))).toEqual({
+      d: '2023-11-14',
+    });
+    expect(timeElement.props.transform(dayjs('2026-01-01 14:30:00'))).toEqual({
+      t: '14:30:00',
+    });
+
+    // Empty values pass through unchanged.
+    expect(dateElement.props.transform(undefined)).toEqual({ d: undefined });
+    expect(timeElement.props.transform(null)).toEqual({ t: null });
   });
 
   it('renders editor and default field', () => {
@@ -142,6 +188,8 @@ describe('formFieldRenderer', () => {
     );
     expect(editor.type).toBe(require('@/components').ProFormEditorJS);
     expect(editor.props.fieldProps.readOnly).toBe(true);
+    expect(editor.props.fieldProps.height).toBeUndefined();
+    expect(editor.props.fieldProps.config.placeholder).toBe('help');
 
     const fallback: any = renderFormField('x', { field_type: 'UnknownField' });
     expect(fallback.type.displayName).toBe('ProFormText');

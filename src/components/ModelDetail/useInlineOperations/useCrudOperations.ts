@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { deleteModelData, getModelData, saveModelData } from '@/services/api';
+import { markDetailModified } from '@/utils/unsavedGuard';
 import type { EditingKeysState, InlineDataState } from './types';
 
 interface UseCrudOperationsOptions {
@@ -27,6 +28,7 @@ export const useCrudOperations = ({
         });
 
         if (response?.code === 0) {
+          markDetailModified();
           messageApi.success('Saved successfully');
           setInlineData((prev) => ({
             ...prev,
@@ -60,6 +62,7 @@ export const useCrudOperations = ({
         });
 
         if (response?.code === 0) {
+          markDetailModified();
           messageApi.success('Deleted successfully');
           setInlineData((prev) => ({
             ...prev,

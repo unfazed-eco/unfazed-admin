@@ -102,6 +102,6 @@ describe('requestErrorConfig', () => {
 
     const response = { data: { success: false } };
     expect(resp(response as any)).toBe(response);
-    expect(message.error).toHaveBeenCalledWith('请求失败！');
+    expect(message.error).toHaveBeenCalledWith('Request failed!');
   });
 });

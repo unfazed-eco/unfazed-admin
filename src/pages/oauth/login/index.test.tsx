@@ -1,6 +1,9 @@
 import { render, waitFor } from '@testing-library/react';
 import OAuthLogin from './index';
 
+const React = require('react');
+void React.version;
+
 const mockUseModel = jest.fn();
 const mockLogin = jest.fn();
 const mockGetAdminSettings = jest.fn();
@@ -116,7 +119,7 @@ describe('OAuth login page', () => {
 
     await waitFor(() => {
       expect(mockMessage.error).toHaveBeenCalledWith(
-        'OAuth登录失败: access_denied',
+        'OAuth sign-in failed: access_denied',
       );
     });
     expect(localStorage.getItem('oauth_platform')).toBeNull();
@@ -146,7 +149,9 @@ describe('OAuth login page', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalled();
-      expect(mockMessage.success).toHaveBeenCalledWith('OAuth登录成功！');
+      expect(mockMessage.success).toHaveBeenCalledWith(
+        'OAuth sign-in completed successfully!',
+      );
     });
 
     expect(mockGetAdminSettings).toHaveBeenCalled();
@@ -192,7 +197,7 @@ describe('OAuth login page', () => {
     render(<OAuthLogin />);
     await waitFor(() => {
       expect(mockMessage.error).toHaveBeenCalledWith(
-        'OAuth登录处理失败，请重试',
+        'OAuth sign-in processing failed. Please try again.',
       );
     });
     jest.advanceTimersByTime(2000);

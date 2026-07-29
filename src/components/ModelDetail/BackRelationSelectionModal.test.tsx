@@ -144,7 +144,7 @@ describe('BackRelationSelectionModal', () => {
     expect(byKey.status.render(null, { status: 'A' })).toBe('Active');
     expect(byKey.enabled.render(null, { enabled: true })).toBe('✓');
     expect(byKey.enabled.render(null, { enabled: false })).toBe('✗');
-    expect(byKey.score.render(null, { score: 1000 })).toBe('1,000');
+    expect(byKey.score.render(null, { score: 1000 })).toBe('1000');
     expect(byKey.score.render(null, { score: 'bad' })).toBe('-');
     expect(byKey.name.render(null, { name: 'x'.repeat(40) })).toContain('...');
 

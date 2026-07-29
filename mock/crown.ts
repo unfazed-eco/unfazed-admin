@@ -8,6 +8,9 @@ const waitTime = (time: number = 100) => {
   });
 };
 
+const crownRuleContent =
+  '{"time":1703097600000,"blocks":[{"id":"rule-title","type":"header","data":{"text":"Crown Display Rules","level":2}},{"id":"rule-intro","type":"paragraph","data":{"text":"Use this rule editor to describe validation, display, and ownership rules for the crown."}},{"id":"rule-list","type":"list","data":{"style":"unordered","items":["Verify owner and status before publication","Keep appraisal notes current","Require maintenance review for inactive crowns"]}}],"version":"2.28.2"}';
+
 // User model mock data
 const userData = [
   {
@@ -316,7 +319,7 @@ const crownData = [
   },
   {
     id: 8,
-    name: 'Antique Crown',
+    name: 'Antique Crown Antique Crown Antique Crown Antique Crown Antique Crown',
     type: 'antique',
     level: 4,
     price: 7777.77,
@@ -694,6 +697,16 @@ const crownModelDesc = {
       default: '',
       name: 'Rich Description',
     },
+    rule: {
+      field_type: 'EditorField' as const,
+      readonly: false,
+      show: true,
+      blank: true,
+      choices: [],
+      help_text: 'Editor rules for crown management',
+      default: crownRuleContent,
+      name: 'Rule',
+    },
     image_url: {
       field_type: 'ImageField' as const,
       readonly: false,
@@ -944,6 +957,7 @@ const crownModelDesc = {
     list_editable: ['name', 'type', 'price', 'owner', 'status'],
     list_filter: ['type', 'status', 'is_active', 'material', 'region'],
     list_search: ['name', 'owner'],
+    editor_fields: ['rule'],
     list_display: [
       'id',
       'name',
@@ -962,6 +976,7 @@ const crownModelDesc = {
       'level',
       'price',
       'description',
+      'rule',
       'owner',
       'weight',
       'material',
@@ -972,7 +987,7 @@ const crownModelDesc = {
       'updated_at',
     ],
     detail_order: ['owner', 'status', 'is_active'],
-    detail_editable: ['type', 'price'],
+    detail_editable: ['type', 'price', 'rule'],
   },
 };
 
@@ -1999,7 +2014,10 @@ export default {
     let filteredData: any[] = [];
 
     if (name === 'crown') {
-      filteredData = [...crownData];
+      filteredData = crownData.map((item) => ({
+        rule: crownRuleContent,
+        ...item,
+      }));
     } else if (name === 'user') {
       filteredData = [...userData];
     } else if (name === 'crown_history') {
@@ -2318,7 +2336,7 @@ export default {
       });
     } else if (name === 'crown_history') {
       // Crown History 保存操作
-      const isUpdate = data.id;
+      const isUpdate = typeof data.id === 'number' && data.id > 0;
       let savedData: any = null;
 
       if (isUpdate) {

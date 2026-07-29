@@ -192,7 +192,7 @@ export default {
         showWatermark: false, // 水印开关控制
         defaultLoginType: true,
         pageSize: 20,
-        timeZone: 'Asia/Shanghai',
+        timeZone: 'UTC',
         apiPrefix: '/api',
         debug: false,
         version: '1.0.0',
@@ -294,7 +294,7 @@ export default {
       data: [
         {
           name: 'crown', // 模型名称，用于 model-desc/model-data API
-          label: 'Crown Management', // 显示名称，用于侧边栏
+          label: 'Crown Management Crown Management', // 显示名称，用于侧边栏
           path: '/crown',
           component: 'ModelAdmin',
           icon: 'CrownOutlined',

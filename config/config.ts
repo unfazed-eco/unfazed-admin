@@ -180,7 +180,7 @@ export default defineConfig({
     {
       rel: 'icon',
       type: 'image/png',
-      href: 'https://unfazed-eco.github.io/images/uz-logo.png',
+      href: defaultSettings.iconfontUrl || defaultSettings.logo,
     },
   ],
 });

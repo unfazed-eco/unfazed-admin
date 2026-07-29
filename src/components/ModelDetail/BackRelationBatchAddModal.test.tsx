@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import dayjs from 'dayjs';
 import * as React from 'react';
 import BackRelationBatchAddModal from './BackRelationBatchAddModal';
 
 jest.mock('antd', () => {
-  const React = require('react');
+  const _React = require('react');
   return {
     Button: ({ children, onClick, ...rest }: any) => (
       <button type="button" onClick={onClick} {...rest}>
@@ -39,6 +40,9 @@ jest.mock('antd', () => {
 });
 
 describe('BackRelationBatchAddModal', () => {
+  const unixSeconds = (value: string) =>
+    Math.floor(new Date(value).getTime() / 1000);
+
   const inlineDesc = {
     attrs: {
       label: 'Crown History',
@@ -144,7 +148,7 @@ describe('BackRelationBatchAddModal', () => {
     expect(onPreview).toHaveBeenLastCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          event_date: '2026-04-08T09:00:00Z',
+          event_date: unixSeconds('2026-04-08T09:00:00Z'),
           event_type: 'created',
           description: 'Initial record',
           level_type: 1,
@@ -152,6 +156,122 @@ describe('BackRelationBatchAddModal', () => {
       ]),
     );
     expect(messageApi.success).toHaveBeenCalledWith('Preview loaded: 2 row(s)');
+  });
+
+  it('should keep DatetimeField pasted timestamps as unix seconds', async () => {
+    const onPreview = jest.fn();
+    const onBatchSave = jest.fn(async () => {});
+    render(
+      <BackRelationBatchAddModal
+        {...baseProps}
+        onPreview={onPreview}
+        onBatchSave={onBatchSave}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('batch-textarea'), {
+      target: {
+        value: '1779972346000\tcreated\tRaw timestamp\t1',
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(onPreview).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        event_date: 1779972346,
+        event_type: 'created',
+        description: 'Raw timestamp',
+        level_type: 1,
+      }),
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Preview' }));
+    fireEvent.change(screen.getByTestId('batch-textarea'), {
+      target: {
+        value: '1779972346\tcreated\tRaw timestamp\t1',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Batch Save' }));
+
+    await waitFor(() => {
+      expect(onBatchSave).toHaveBeenCalledWith([
+        expect.objectContaining({
+          event_date: 1779972346,
+        }),
+      ]);
+    });
+  });
+
+  it('interprets bare DatetimeField strings in the configured time zone', () => {
+    // Default configured time zone is UTC, so a bare wall-clock string must be
+    // interpreted as UTC (independent of the browser local time zone).
+    const onPreview = jest.fn();
+    render(<BackRelationBatchAddModal {...baseProps} onPreview={onPreview} />);
+
+    fireEvent.change(screen.getByTestId('batch-textarea'), {
+      target: { value: '2026-04-08 09:00:00\tcreated\tBare datetime\t1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    const expectedUnix = dayjs.utc('2026-04-08 09:00:00').unix();
+    expect(onPreview).toHaveBeenLastCalledWith([
+      expect.objectContaining({ event_date: expectedUnix }),
+    ]);
+  });
+
+  it('should accept DateField raw numeric values without changing date strings', () => {
+    const onPreview = jest.fn();
+    const dateInlineDesc = {
+      attrs: {
+        label: 'Date Rows',
+        list_order: ['event_date', 'description'],
+      },
+      fields: {
+        event_date: {
+          name: 'Event Date',
+          field_type: 'DateField',
+          readonly: false,
+          show: true,
+          blank: false,
+          choices: [],
+        },
+        description: {
+          name: 'Description',
+          field_type: 'TextField',
+          readonly: false,
+          show: true,
+          blank: true,
+          choices: [],
+        },
+      },
+    };
+
+    render(
+      <BackRelationBatchAddModal
+        {...baseProps}
+        inlineDesc={dateInlineDesc}
+        onPreview={onPreview}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('batch-textarea'), {
+      target: {
+        value: '1779972346\tRaw date value\n2026-05-28\tDate string',
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(onPreview).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        event_date: 1779972346,
+        description: 'Raw date value',
+      }),
+      expect.objectContaining({
+        event_date: '2026-05-28',
+        description: 'Date string',
+      }),
+    ]);
   });
 
   it('should hide textarea in preview mode and show it after close preview', () => {
@@ -243,7 +363,7 @@ describe('BackRelationBatchAddModal', () => {
     });
     expect(onBatchSave).toHaveBeenCalledWith([
       expect.objectContaining({
-        event_date: '2026-04-08T09:00:00Z',
+        event_date: unixSeconds('2026-04-08T09:00:00Z'),
         event_type: 'created',
         description: 'Save this row',
         level_type: 1,

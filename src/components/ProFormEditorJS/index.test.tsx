@@ -4,6 +4,7 @@ import ProFormEditorJS from './index';
 
 let mockAttachEditor = true;
 let mockCapturedItemProps: any;
+let mockCapturedEditorProps: any;
 let mockEditorSetData: jest.Mock;
 
 jest.mock('@ant-design/pro-components', () => {
@@ -25,6 +26,7 @@ jest.mock('../EditorJS', () => {
   return {
     __esModule: true,
     default: React.forwardRef((props: any, ref: any) => {
+      mockCapturedEditorProps = props;
       let editorRefApi: any = null;
       if (mockAttachEditor) {
         mockEditorSetData = jest.fn();
@@ -50,6 +52,7 @@ describe('ProFormEditorJS', () => {
     jest.clearAllMocks();
     mockAttachEditor = true;
     mockCapturedItemProps = undefined;
+    mockCapturedEditorProps = undefined;
     mockEditorSetData = jest.fn();
   });
 
@@ -66,6 +69,8 @@ describe('ProFormEditorJS', () => {
     expect(mockCapturedItemProps.valuePropName).toBe('value');
     expect(mockCapturedItemProps.trigger).toBe('onChange');
     expect(mockCapturedItemProps.getValueFromEvent('abc')).toBe('abc');
+    expect(mockCapturedEditorProps.height).toBe(360);
+    expect(mockCapturedEditorProps.value).toBe('<p>x</p>');
 
     await expect(ref.current.save()).resolves.toBe('saved');
     await expect(ref.current.clear()).resolves.toBeUndefined();
@@ -87,5 +92,11 @@ describe('ProFormEditorJS', () => {
     expect(ref.current.getEditor()).toBeNull();
 
     ref.current.setData('<p>x</p>');
+  });
+
+  it('does not inject a default editor height', () => {
+    render(<ProFormEditorJS name="content" />);
+
+    expect(mockCapturedEditorProps.height).toBeUndefined();
   });
 });

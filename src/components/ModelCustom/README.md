@@ -1,40 +1,40 @@
 # ModelCustom Component
 
-`ModelCustom` 组件用于渲染基于 `AdminToolSerializeModel` 的自定义页面。它提供了一个灵活的表单界面，支持多种字段类型和操作按钮。
+`ModelCustom` renders custom pages driven by `AdminToolSerializeModel`. It provides a flexible form interface with multiple field types and action buttons.
 
-## 功能特性
+## Features
 
-### 🎯 **核心功能**
-- **动态表单渲染**：基于 `fields` 配置自动生成表单字段
-- **多种字段类型**：支持 CharField、TextField、IntegerField、FloatField、BooleanField、DateField 等
-- **操作按钮**：基于 `actions` 配置生成操作按钮
-- **多种输出类型**：支持 toast、display、download、refresh 等输出模式
+### Core Capabilities
+- **Dynamic form rendering**: Automatically generates fields from the `fields` config
+- **Multiple field types**: Supports CharField, TextField, IntegerField, FloatField, BooleanField, DateField, and more
+- **Action buttons**: Builds action buttons from the `actions` config
+- **Multiple output types**: Supports `toast`, `display`, `download`, `refresh`, and similar response modes
 
-### 📊 **字段类型支持**
+### Supported Field Types
 
-| 字段类型        | 组件                        | 说明                               |
-| --------------- | --------------------------- | ---------------------------------- |
-| `CharField`     | ProFormText / ProFormSelect | 文本输入或选择器（如果有 choices） |
-| `TextField`     | ProFormTextArea             | 多行文本输入                       |
-| `IntegerField`  | ProFormDigit                | 整数输入                           |
-| `FloatField`    | ProFormDigit                | 浮点数输入                         |
-| `BooleanField`  | ProFormSwitch               | 开关组件                           |
-| `DateField`     | ProFormDatePicker           | 日期选择器                         |
-| `DatetimeField` | ProFormDateTimePicker       | 日期时间选择器                     |
-| `TimeField`     | ProFormTimePicker           | 时间选择器                         |
+| Field Type      | Component                   | Description                               |
+| --------------- | --------------------------- | ----------------------------------------- |
+| `CharField`     | ProFormText / ProFormSelect | Text input or select when `choices` exist |
+| `TextField`     | ProFormTextArea             | Multi-line text input                     |
+| `IntegerField`  | ProFormDigit                | Integer input                             |
+| `FloatField`    | ProFormDigit                | Floating-point input                      |
+| `BooleanField`  | ProFormSwitch               | Toggle switch                             |
+| `DateField`     | ProFormDatePicker           | Date picker                               |
+| `DatetimeField` | ProFormDateTimePicker       | Date-time picker                          |
+| `TimeField`     | ProFormTimePicker           | Time picker                               |
 
-### 🎛️ **操作按钮功能**
+### Action Output Behavior
 
-| Output 类型 | 行为                         |
-| ----------- | ---------------------------- |
-| `toast`     | 显示成功/错误消息            |
-| `display`   | 在模态框中显示返回的数据     |
-| `download`  | 下载文件（如果返回文本数据） |
-| `refresh`   | 显示消息（可扩展为刷新页面） |
+| Output Type | Behavior                                   |
+| ----------- | ------------------------------------------ |
+| `toast`     | Show success or error messages             |
+| `display`   | Show returned data in a modal              |
+| `download`  | Download a file when text data is returned |
+| `refresh`   | Show a message and optionally refresh      |
 
-## 使用方法
+## Usage
 
-### 基础用法
+### Basic Example
 
 ```typescript
 import { ModelCustom } from '@/components';
@@ -68,7 +68,7 @@ const MyCustomTool = () => {
                 name: 'submit',
                 label: 'Submit',
                 description: 'Submit the form',
-                input: 'empty', // 或 'string', 'file'
+                input: 'empty', // or 'string', 'file'
                 output: 'toast',
                 confirm: false,
                 batch: false,
@@ -91,15 +91,15 @@ const MyCustomTool = () => {
 };
 ```
 
-### 与路由集成
+### Route Integration
 
 ```typescript
-// 在路由组件中使用
+// Use inside a route component
 const CustomToolPage = () => {
     const { toolName } = useParams();
     const [toolDesc, setToolDesc] = useState<API.AdminToolSerializeModel | null>(null);
-    
-    // 获取工具描述
+
+    // Fetch the tool description
     useRequest(async () => {
         const response = await getModelDesc({ name: toolName });
         if (response?.code === 0) {
@@ -121,62 +121,62 @@ const CustomToolPage = () => {
 };
 ```
 
-## API 接口
+## API
 
 ### Props
 
-| 属性       | 类型                          | 描述                      | 必填 |
-| ---------- | ----------------------------- | ------------------------- | ---- |
-| `toolDesc` | `API.AdminToolSerializeModel` | 工具描述对象              | ✅    |
-| `toolName` | `string`                      | 工具名称（用于 API 调用） | ✅    |
-| `onBack`   | `() => void`                  | 返回按钮回调              | ❌    |
+| Prop       | Type                          | Description                  | Required |
+| ---------- | ----------------------------- | ---------------------------- | -------- |
+| `toolDesc` | `API.AdminToolSerializeModel` | Tool description object      | ✅       |
+| `toolName` | `string`                      | Tool name used for API calls | ✅       |
+| `onBack`   | `() => void`                  | Back button callback         | ❌       |
 
-### toolDesc 结构
+### `toolDesc` Structure
 
 ```typescript
 interface AdminToolSerializeModel {
-    fields: Record<string, AdminField>;    // 表单字段配置
-    actions: Record<string, AdminAction>;  // 操作按钮配置
-    attrs: AdminToolAttrs;                 // 工具属性
+    fields: Record<string, AdminField>;    // Form field configuration
+    actions: Record<string, AdminAction>;  // Action button configuration
+    attrs: AdminToolAttrs;                 // Tool attributes
 }
 
 interface AdminToolAttrs {
-    help_text: string;      // 工具描述文本
-    output_field: string;   // 输出字段名
+    help_text: string;      // Tool description text
+    output_field: string;   // Output field name
 }
 ```
 
-## 自定义扩展
+## Custom Extensions
 
-### 添加新的字段类型
+### Add a New Field Type
 
 ```typescript
-// 在 renderFormField 函数中添加新的 case
+// Add a new case in renderFormField
 case 'CustomField':
     return <CustomFormComponent key={fieldName} {...commonProps} />;
 ```
 
-### 添加新的输出类型
+### Add a New Output Type
 
 ```typescript
-// 在 executeAction 函数中添加新的 case
+// Add a new case in executeAction
 case 'custom_output':
-    // 自定义处理逻辑
+    // Custom handling logic
     handleCustomOutput(response.data);
     break;
 ```
 
-## 注意事项
+## Notes
 
-1. **字段验证**：必填字段（`blank: false`）会自动添加验证规则
-2. **只读字段**：`readonly: true` 的字段将被禁用
-3. **选择字段**：有 `choices` 的 CharField 自动渲染为选择器
-4. **操作输入**：根据 `action.input` 决定是否需要表单数据
-5. **错误处理**：所有 API 调用都有错误处理和用户友好的提示
+1. **Field validation**: Required fields (`blank: false`) automatically receive validation rules
+2. **Readonly fields**: Fields with `readonly: true` are disabled
+3. **Choice fields**: CharField with `choices` is rendered as a select
+4. **Action input**: Whether form data is required depends on `action.input`
+5. **Error handling**: All API calls include error handling and user-friendly feedback
 
-## 示例场景
+## Example Scenarios
 
-- **数据导入工具**：文件上传 + 处理按钮
-- **报表生成器**：参数输入 + 生成报表
-- **系统配置**：设置表单 + 保存按钮
-- **数据分析工具**：查询条件 + 分析按钮
+- **Data import tool**: File upload plus processing action
+- **Report generator**: Parameter input plus report generation
+- **System configuration**: Settings form plus save action
+- **Data analysis tool**: Query conditions plus analysis action

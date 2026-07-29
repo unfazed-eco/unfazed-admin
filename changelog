@@ -1,0 +1,4 @@
+# v0.0.4
+
+- [issue 23](https://github.com/unfazed-eco/unfazed-admin/issues/23) FEAT: Add Copy action for bk_fk inline rows
+- [issue 21](https://github.com/unfazed-eco/unfazed-admin/issues/21) FIX: Reset copied create payload id to -1

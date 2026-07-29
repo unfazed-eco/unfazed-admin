@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { deleteModelData, getModelData, saveModelData } from '@/services/api';
+import { markDetailModified } from '@/utils/unsavedGuard';
 
 interface UseM2MOperationsOptions {
   mainRecord: Record<string, any>;
@@ -75,6 +76,7 @@ export const useM2MOperations = ({
           messageApi.success(
             `Successfully added ${targetRecordsOrIds.length} relation(s)`,
           );
+          markDetailModified();
         }
       } catch (error) {
         messageApi.error('Failed to add relations');
@@ -161,6 +163,7 @@ export const useM2MOperations = ({
               ? 'Relation removed'
               : `Successfully removed ${recordsOrIds.length} relation(s)`,
           );
+          markDetailModified();
         }
       } catch (error) {
         messageApi.error('Failed to remove relation');

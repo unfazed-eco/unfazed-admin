@@ -15,6 +15,7 @@ interface MainFormTabProps {
   isCreateMode: boolean;
   messageApi: any;
   onBack?: () => void;
+  setOperationLoading: React.Dispatch<React.SetStateAction<boolean>>;
   onValuesChange?: (values: Record<string, any>) => void;
 }
 
@@ -27,6 +28,7 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
   isCreateMode,
   messageApi,
   onBack,
+  setOperationLoading,
   onValuesChange,
 }) => {
   return (
@@ -41,6 +43,7 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
           onValuesChange?.(allValues as Record<string, any>);
         }}
         onFinish={async (values) => {
+          setOperationLoading(true);
           try {
             const dataToSave = isCreateMode ? values : { ...record, ...values };
 
@@ -60,6 +63,8 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
           } catch (error) {
             messageApi.error('Save failed');
             console.error('Save error:', error);
+          } finally {
+            setOperationLoading(false);
           }
         }}
         submitter={{
@@ -79,7 +84,6 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
       >
         <Divider orientation="left">Basic Information</Divider>
         {(() => {
-          // Get detail config from attrs
           const detailDisplay = (modelDesc.attrs as any)?.detail_display as
             | string[]
             | undefined;
@@ -90,36 +94,15 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
             | string[]
             | undefined;
 
-          // Debug: log detail_display configuration
-          console.log('=== ModelDetail Debug ===');
-          console.log('detail_display:', detailDisplay);
-          console.log('detail_editable:', detailEditable);
-          console.log('can_edit:', canEdit);
-          console.log('all fields:', Object.keys(modelDesc.fields));
-
-          // Get field entries
           let fieldEntries = Object.entries(modelDesc.fields);
 
-          // Filter by detail_display if defined
           if (detailDisplay && detailDisplay.length > 0) {
             fieldEntries = fieldEntries.filter(([fieldName]) =>
               detailDisplay.includes(fieldName),
             );
-            console.log(
-              'after detail_display filter:',
-              fieldEntries.map(([name]) => name),
-            );
-          } else {
-            console.log('detail_display not applied (empty or undefined)');
           }
 
-          // Sort by detail_order if defined
-          console.log('detail_order:', detailOrder);
           if (detailOrder && detailOrder.length > 0) {
-            console.log(
-              'before detail_order sort:',
-              fieldEntries.map(([name]) => name),
-            );
             fieldEntries = fieldEntries.sort(([a], [b]) => {
               const indexA = detailOrder.indexOf(a);
               const indexB = detailOrder.indexOf(b);
@@ -127,36 +110,19 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
               const orderB = indexB === -1 ? Number.MAX_SAFE_INTEGER : indexB;
               return orderA - orderB;
             });
-            console.log(
-              'after detail_order sort:',
-              fieldEntries.map(([name]) => name),
-            );
-          } else {
-            console.log('detail_order not applied (empty or undefined)');
           }
 
           return fieldEntries.map(([fieldName, fieldConfig]: [string, any]) => {
-            // If detail_display is defined and field is in it, show regardless of fieldConfig.show
-            // Otherwise, respect fieldConfig.show
             const shouldShow =
               detailDisplay && detailDisplay.length > 0
                 ? detailDisplay.includes(fieldName)
                 : fieldConfig.show !== false;
 
             if (!shouldShow) {
-              console.log(`field "${fieldName}" hidden`);
               return null;
             }
-            console.log(`rendering field: ${fieldName}`);
 
-            // Determine if field is editable
-            // If can_edit is false, all fields are readonly
             let isReadonly = !canEdit || fieldConfig.readonly;
-            console.log(
-              `  ${fieldName} initial readonly:`,
-              isReadonly,
-              `(canEdit: ${canEdit}, fieldConfig.readonly: ${fieldConfig.readonly})`,
-            );
 
             if (
               canEdit &&
@@ -165,11 +131,6 @@ const MainFormTab: React.FC<MainFormTabProps> = ({
               detailEditable.length > 0
             ) {
               isReadonly = !detailEditable.includes(fieldName);
-              console.log(
-                `  ${fieldName} after detail_editable check:`,
-                isReadonly,
-                `(in list: ${detailEditable.includes(fieldName)})`,
-              );
             }
 
             return renderFormField(fieldName, fieldConfig, formRef, {

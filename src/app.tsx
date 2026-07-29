@@ -1,14 +1,16 @@
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 
-// 扩展 LayoutSettings 以包含我们的自定义字段
+// Extend LayoutSettings with custom fields
 interface ExtendedLayoutSettings extends LayoutSettings {
   showWatermark?: boolean;
+  favicon?: string;
 }
 
 import { SettingDrawer } from '@ant-design/pro-components';
 import { AvatarDropdown, AvatarName, Footer, SelectLang } from '@/components';
 import { getAdminSettings } from '@/services/api';
 import { getRouteAndMenuData } from '@/utils/routeManager';
+import { setDocumentFavicon } from '@/utils/settings';
 import '@ant-design/v5-patch-for-react-19';
 import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
@@ -20,7 +22,7 @@ import { errorConfig } from './requestErrorConfig';
 const isDev = process.env.NODE_ENV === 'development' || process.env.CI;
 const loginPath = '/user/login';
 
-// 路由和图标转换函数已移动到 routeManager.ts 中
+// Route and icon conversion helpers live in routeManager.ts
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -31,11 +33,11 @@ export async function getInitialState(): Promise<{
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
   menuData?: any[];
-  routeList?: API.AdminRoute[]; // 添加原始路由数据
+  routeList?: API.AdminRoute[]; // Keep the raw route data
 }> {
   const fetchUserInfo = async () => {
     try {
-      // 从本地存储获取用户信息，而不是调用 currentUser API
+      // Read user info from localStorage instead of calling currentUser API
       const userInfo = localStorage.getItem('userInfo');
       if (userInfo) {
         return JSON.parse(userInfo) as API.CurrentUser;
@@ -44,7 +46,7 @@ export async function getInitialState(): Promise<{
       console.warn('Failed to parse user info from localStorage:', _error);
     }
 
-    // 如果没有用户信息且不在登录相关页面，才跳转到登录页
+    // Redirect to login only when user info is missing outside auth pages
     const { location } = history;
     if (
       ![
@@ -66,11 +68,16 @@ export async function getInitialState(): Promise<{
       if (response.code === 0) {
         const apiData = response.data;
 
-        // 分离ProLayout需要的字段和应用级别的字段
+        // Split ProLayout fields from app-level settings
         const layoutSettings = {
-          // ProLayout直接支持的字段
+          // Fields supported directly by ProLayout
           title: apiData.title || defaultSettings.title,
           logo: apiData.logo || defaultSettings.logo,
+          favicon:
+            apiData.iconfontUrl ||
+            apiData.favicon ||
+            apiData.logo ||
+            defaultSettings.logo,
           navTheme: apiData.navTheme,
           colorPrimary: apiData.colorPrimary,
           layout: apiData.layout,
@@ -78,25 +85,25 @@ export async function getInitialState(): Promise<{
           fixedHeader: apiData.fixedHeader,
           fixSiderbar: apiData.fixSiderbar ?? defaultSettings.fixSiderbar,
           colorWeak: apiData.colorWeak,
-          // 前端特有字段
+          // Frontend-only fields
           pwa: apiData.pwa ?? defaultSettings.pwa,
-          iconfontUrl: apiData.iconfontUrl ?? defaultSettings.iconfontUrl,
-          // 水印控制字段
+          // Watermark control
           showWatermark: apiData.showWatermark ?? true,
         };
+        setDocumentFavicon(layoutSettings.favicon);
 
-        // 应用级别的配置存储到localStorage
+        // Persist app-level settings to localStorage
         const appSettings = {
           pageSize: apiData.pageSize,
           timeZone: apiData.timeZone,
           apiPrefix: apiData.apiPrefix,
           debug: apiData.debug,
           version: apiData.version,
-          extra: apiData.extra,
+          extra: apiData.extra ?? apiData.EXTRA,
           authPlugins: apiData.authPlugins,
         };
 
-        // 存储应用级别配置到localStorage
+        // Save app-level settings to localStorage
         try {
           localStorage.setItem(
             'unfazed_app_settings',
@@ -111,6 +118,7 @@ export async function getInitialState(): Promise<{
     } catch (_error) {
       console.warn('Failed to fetch settings, using default settings');
     }
+    setDocumentFavicon(defaultSettings.iconfontUrl || defaultSettings.logo);
     return defaultSettings as Partial<ExtendedLayoutSettings>;
   };
 
@@ -124,7 +132,7 @@ export async function getInitialState(): Promise<{
     return { routeList: [], menuData: [] };
   };
 
-  // 如果不是登录相关页面，检查用户登录状态
+  // Check login state outside auth pages
   const { location } = history;
   if (
     ![
@@ -136,8 +144,8 @@ export async function getInitialState(): Promise<{
   ) {
     const currentUser = await fetchUserInfo();
     if (currentUser) {
-      // 用户已登录，获取API设置和动态路由数据
-      // 注意：动态路由只在用户登录后获取，确保权限控制
+      // User is logged in, load API settings and dynamic route data
+      // Dynamic routes are fetched only after login to preserve access control
       const settings = await fetchSettings();
       const { routeList, menuData } = await fetchMenuData();
       return {
@@ -164,11 +172,17 @@ export async function getInitialState(): Promise<{
   };
 }
 
-// ProLayout 支持的api https://procomponents.ant.design/components/layout
+// ProLayout API: https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({
   initialState,
   setInitialState,
 }) => {
+  const {
+    favicon: _favicon,
+    iconfontUrl: _iconfontUrl,
+    ...layoutSettings
+  } = initialState?.settings || {};
+
   return {
     actionsRender: () => [<SelectLang key="selectLang" />],
     avatarProps: {
@@ -178,7 +192,7 @@ export const layout: RunTimeLayoutConfig = ({
         return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
       },
     },
-    // 使用动态菜单数据
+    // Use dynamic menu data
     menu: {
       request: async () => {
         return initialState?.menuData || [];
@@ -212,7 +226,7 @@ export const layout: RunTimeLayoutConfig = ({
         if (first) history.replace(first);
         return;
       }
-      // 如果没有登录，重定向到 login
+      // Redirect to login if no user is available
       if (!initialState?.currentUser && location.pathname !== loginPath) {
         history.push(loginPath);
       }
@@ -239,9 +253,9 @@ export const layout: RunTimeLayoutConfig = ({
     ],
     links: [],
     menuHeaderRender: undefined,
-    // 自定义 403 页面
+    // Custom 403 page
     // unAccessible: <div>unAccessible</div>,
-    // 增加一个 loading 的状态
+    // Add an explicit loading state
     childrenRender: (children) => {
       // if (initialState?.loading) return <PageLoading />;
       return (
@@ -263,17 +277,17 @@ export const layout: RunTimeLayoutConfig = ({
         </>
       );
     },
-    ...initialState?.settings,
+    ...layoutSettings,
   };
 };
 
 /**
- * @name request 配置，可以配置错误处理
- * 它基于 axios 和 ahooks 的 useRequest 提供了一套统一的网络请求和错误处理方案。
- * @doc https://umijs.org/docs/max/request#配置
+ * @name request configuration with centralized error handling
+ * Built on axios and ahooks useRequest for a unified request/error flow.
+ * @doc https://umijs.org/docs/max/request#configuration
  */
 export const request: RequestConfig = {
-  // 在开发环境使用相对路径，生产环境可以配置具体API地址
+  // Use relative paths in development; production can point to a concrete API host
   // baseURL: process.env.NODE_ENV === 'development' ? '' : 'your-production-api-url',
   ...errorConfig,
 };

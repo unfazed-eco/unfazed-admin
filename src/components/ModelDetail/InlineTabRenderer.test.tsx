@@ -38,6 +38,7 @@ describe('useInlineTabRenderer', () => {
   let mockBackRelationAddModalVisibleState: Record<string, boolean>;
   let mockBackRelationBatchAddModalVisibleState: Record<string, boolean>;
   let mockBackRelationEditModalRecordState: Record<string, any>;
+  let mockBackRelationCopyModalRecordState: Record<string, any>;
   let mockPreviewInlineDataState: Record<string, any[] | undefined>;
   let mockOperationLoadingState: boolean;
 
@@ -75,6 +76,12 @@ describe('useInlineTabRenderer', () => {
     mockBackRelationEditModalRecordState =
       typeof updater === 'function'
         ? updater(mockBackRelationEditModalRecordState)
+        : updater;
+  });
+  const mockSetBackRelationCopyModalRecord = jest.fn((updater: any) => {
+    mockBackRelationCopyModalRecordState =
+      typeof updater === 'function'
+        ? updater(mockBackRelationCopyModalRecordState)
         : updater;
   });
   const mockSetPreviewInlineData = jest.fn((updater: any) => {
@@ -129,6 +136,7 @@ describe('useInlineTabRenderer', () => {
         setBackRelationBatchAddModalVisible:
           mockSetBackRelationBatchAddModalVisible,
         setBackRelationEditModalRecord: mockSetBackRelationEditModalRecord,
+        setBackRelationCopyModalRecord: mockSetBackRelationCopyModalRecord,
         previewInlineData: mockPreviewInlineDataState,
         setPreviewInlineData: mockSetPreviewInlineData,
         setOperationLoading: mockSetOperationLoading,
@@ -152,6 +160,7 @@ describe('useInlineTabRenderer', () => {
     mockBackRelationAddModalVisibleState = {};
     mockBackRelationBatchAddModalVisibleState = {};
     mockBackRelationEditModalRecordState = {};
+    mockBackRelationCopyModalRecordState = {};
     mockPreviewInlineDataState = {};
     mockOperationLoadingState = false;
 
@@ -313,10 +322,41 @@ describe('useInlineTabRenderer', () => {
 
     expect(props.onDeleteRelated).toBeUndefined();
     expect(typeof props.onEditRelated).toBe('function');
+    expect(props.onCopyRelated).toBeUndefined();
     act(() => {
       props.onEditRelated({ id: 88 });
     });
     expect(mockBackRelationEditModalRecordState.comments).toEqual({ id: 88 });
+  });
+
+  it('covers bk_fk nullable=false with copy/add/batch actions', async () => {
+    const { result } = createHook({
+      inlineDescs: {
+        logs: {
+          relation: { relation: 'bk_fk', target_field_nullable: false },
+          attrs: {
+            can_add: true,
+            can_delete: true,
+            can_edit: true,
+            can_batch_save: true,
+          },
+        },
+      },
+      loadedTabs: new Set<string>(['logs']),
+    });
+
+    render(result.current.renderInlineComponent('logs') as any);
+    const props = mockTablePropsByModel.logs;
+
+    act(() => {
+      props.onAddRelated();
+      props.onBatchAddRelated();
+      props.onCopyRelated({ id: 89 });
+    });
+    expect(mockBackRelationAddModalVisibleState.logs).toBe(true);
+    expect(mockBackRelationBatchAddModalVisibleState.logs).toBe(true);
+    expect(mockBackRelationCopyModalRecordState.logs).toEqual({ id: 89 });
+    expect(typeof props.onEditRelated).toBe('function');
   });
 
   it('covers bk_fk nullable=false with preview rows and local delete', async () => {
@@ -366,6 +406,7 @@ describe('useInlineTabRenderer', () => {
     expect(mockBackRelationAddModalVisibleState.logs).toBe(true);
     expect(mockBackRelationBatchAddModalVisibleState.logs).toBe(true);
     expect(props.onEditRelated).toBeUndefined();
+    expect(props.onCopyRelated).toBeUndefined();
   });
 
   it('covers bk_o2o behavior and default unsupported relation', () => {
@@ -389,6 +430,7 @@ describe('useInlineTabRenderer', () => {
     expect(typeof profileProps.onAddRelated).toBe('function');
     expect(typeof profileProps.onDeleteRelated).toBe('function');
     expect(profileProps.onEditRelated).toBeUndefined();
+    expect(profileProps.onCopyRelated).toBeUndefined();
     expect(profileProps.linkDisabled).toBe(false);
 
     render(result.current.renderInlineComponent('strange') as any);

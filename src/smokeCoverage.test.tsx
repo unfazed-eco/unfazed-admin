@@ -116,12 +116,10 @@ describe('smoke coverage modules', () => {
 
     const { SelectLang } = require('./components/RightContent');
     render(React.createElement(SelectLang));
-    expect(screen.getByTestId('umi-lang')).toBeTruthy();
+    expect(screen.queryByTestId('umi-lang')).toBeNull();
 
     const en = require('./locales/en-US').default;
-    const zh = require('./locales/zh-CN').default;
     expect(en['navBar.lang']).toBeTruthy();
-    expect(zh['navBar.lang']).toBeTruthy();
   });
 
   it('covers common result/exception pages and style modules', () => {
@@ -144,12 +142,14 @@ describe('smoke coverage modules', () => {
     const SuccessResult = require('./pages/result/success').default;
     render(React.createElement(FailResult));
     render(React.createElement(SuccessResult));
-    expect(screen.getByText('提交失败')).toBeTruthy();
-    expect(screen.getByText('提交成功')).toBeTruthy();
+    expect(screen.getByText('Submission failed')).toBeTruthy();
+    expect(screen.getByText('Submission successful')).toBeTruthy();
 
     const RegisterResult = require('./pages/user/register-result').default;
     render(React.createElement(RegisterResult));
-    expect(screen.getByText(/smoke@example.com 注册成功/)).toBeTruthy();
+    expect(
+      screen.getByText(/smoke@example.com has been registered successfully/),
+    ).toBeTruthy();
 
     const failStyles = require('./pages/result/fail/index.style').default;
     const successStyles = require('./pages/result/success/index.style').default;

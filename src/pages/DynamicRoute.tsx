@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { ModelAdmin, ModelCustom } from '@/components';
 
 /**
- * 动态路由组件
- * 根据当前路径和 route-list 接口返回的配置，动态渲染相应的组件
+ * Dynamic route component
+ * Renders the matching component from the current path and route-list response.
  */
 const DynamicRoute: React.FC = () => {
   const location = useLocation();
@@ -19,18 +19,19 @@ const DynamicRoute: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        // 不要立即重置 routeConfig，避免中间状态的渲染
+        // Avoid resetting routeConfig immediately to prevent transient renders
 
         console.log('Loading route for path:', location.pathname);
 
-        // 检查全局状态中是否有路由数据
+        // Check whether route data exists in global state
         const routeList = initialState?.routeList;
 
         if (!routeList || routeList.length === 0) {
-          // 如果没有路由数据，可能是用户未登录或路由加载失败
+          // Missing route data usually means the user is not logged in
+          // or route loading failed.
           console.warn('Route list not available in global state');
 
-          // 检查是否是需要登录的页面
+          // Check whether the current page requires authentication
           const publicPaths = [
             '/user/login',
             '/oauth/login',
@@ -42,20 +43,20 @@ const DynamicRoute: React.FC = () => {
           );
 
           if (!isPublicPath) {
-            // 对于需要登录的页面，重定向到登录页面
+            // Redirect auth-required pages to the login screen
             history.replace('/user/login');
             return;
           } else {
-            // 对于公共页面，抛出错误让静态路由处理
+            // Let static routes handle public pages
             throw new Error(
               'Route list not available, but this should be handled by static routes',
             );
           }
         }
 
-        // 处理根路径重定向
+        // Handle root-path redirection
         if (location.pathname === '/') {
-          // 获取第一个可用的动态路由进行重定向
+          // Redirect to the first available dynamic route
           const getFirstAvailableRoute = (
             routes: API.AdminRoute[],
           ): string | null => {
@@ -80,7 +81,7 @@ const DynamicRoute: React.FC = () => {
           }
         }
 
-        // 查找当前路径对应的路由配置
+        // Find the route config matching the current path
         const findRouteByPath = (
           routes: API.AdminRoute[],
           targetPath: string,
@@ -100,7 +101,7 @@ const DynamicRoute: React.FC = () => {
         const foundRoute = findRouteByPath(routeList, location.pathname);
 
         if (!foundRoute) {
-          // 对于找不到的路由，重定向到 404 页面
+          // Unknown routes should fall back to the 404 page
           history.replace('/exception/404');
           return;
         }
@@ -115,12 +116,12 @@ const DynamicRoute: React.FC = () => {
       }
     };
 
-    // 每次路径变化时都重新加载路由
+    // Reload routes whenever the path changes
     if (initialState?.routeList) {
       loadRoute();
-      return; // 添加 return 语句
+      return; // Keep the early return explicit
     } else {
-      // 等待全局状态加载完成
+      // Wait for global state to finish loading
       setLoading(true);
       const timer = setTimeout(() => {
         if (initialState?.routeList) {
@@ -135,7 +136,7 @@ const DynamicRoute: React.FC = () => {
     }
   }, [location.pathname, initialState?.routeList]);
 
-  // 渲染对应的组件
+  // Render the resolved component
   const renderComponent = () => {
     // Avoid rendering with stale routeConfig when path just changed
     if (!routeConfig || routeConfig.path !== location.pathname) {

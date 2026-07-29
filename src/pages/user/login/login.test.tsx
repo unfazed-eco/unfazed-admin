@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Login from './index';
 
+const React = require('react');
+void React.version;
+
 const mockUseModel = jest.fn();
 const mockLogin = jest.fn();
 const mockGetAdminSettings = jest.fn();
@@ -46,11 +49,12 @@ jest.mock('@ant-design/pro-components', () => {
     });
 
   return {
-    LoginForm: ({ title, actions, children, onFinish, submitter }: any) =>
+    LoginForm: ({ title, logo, actions, children, onFinish, submitter }: any) =>
       React.createElement(
         'div',
         { 'data-testid': 'login-form' },
         React.createElement('div', { 'data-testid': 'login-title' }, title),
+        React.createElement('div', { 'data-testid': 'login-logo' }, logo),
         actions,
         children,
         submitter === false
@@ -194,17 +198,34 @@ describe('Login Page', () => {
   });
 
   it('renders login form and supports oauth icon login', async () => {
+    mockGetAdminSettings.mockResolvedValue({
+      code: 0,
+      data: {
+        title: 'Custom Admin',
+        logo: '/custom-logo.png',
+        iconfontUrl: '/custom-tab-icon.svg',
+        authPlugins: [{ platform: 'github', icon_url: 'https://icon' }],
+        defaultLoginType: true,
+      },
+    });
+
     render(<Login />);
 
     await waitFor(() => {
       expect(screen.getByTestId('login-form')).toBeTruthy();
       expect(screen.getByTestId('login-title').textContent).toBe(
-        'Unfazed Admin',
+        'Custom Admin',
       );
-      expect(screen.getByTitle('使用 github 登录')).toBeTruthy();
+      expect(screen.getByAltText('logo').getAttribute('src')).toBe(
+        '/custom-logo.png',
+      );
+      expect(
+        document.querySelector<HTMLLinkElement>('link[rel~="icon"]')?.href,
+      ).toContain('/custom-tab-icon.svg');
+      expect(screen.getByTitle('Sign in with github')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByTitle('使用 github 登录'));
+    fireEvent.click(screen.getByTitle('Sign in with github'));
     expect(localStorage.getItem('oauth_platform')).toBe('github');
     expect(mockLocationHref).toContain(
       '/api/auth/oauth-login-redirect?platform=github',
@@ -233,7 +254,9 @@ describe('Login Page', () => {
     fireEvent.click(screen.getByText('submit-login'));
 
     await waitFor(() => {
-      expect(mockMessage.success).toHaveBeenCalledWith('登录成功！');
+      expect(mockMessage.success).toHaveBeenCalledWith(
+        'Signed in successfully!',
+      );
       expect(mockSetInitialState).toHaveBeenCalledWith(expect.any(Function));
     });
 
@@ -260,7 +283,7 @@ describe('Login Page', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('alert').textContent).toBe(
-        '账户或密码错误(admin/ant.design)',
+        'Incorrect username or password (admin/ant.design)',
       );
     });
 
@@ -268,7 +291,9 @@ describe('Login Page', () => {
     fireEvent.click(screen.getByText('submit-login'));
 
     await waitFor(() => {
-      expect(mockMessage.error).toHaveBeenCalledWith('登录失败，请重试！');
+      expect(mockMessage.error).toHaveBeenCalledWith(
+        'Sign-in failed. Please try again!',
+      );
     });
   });
 });

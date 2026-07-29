@@ -45,11 +45,11 @@ jest.mock('antd', () => {
 jest.mock('@ant-design/pro-components', () => {
   const React = require('react');
   return {
-    ProForm: ({ children, onFinish, submitter }: any) => {
+    ProForm: ({ children, onFinish, submitter, initialValues = {} }: any) => {
       const handleSubmit = (e: any) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const values: Record<string, any> = {};
+        const values: Record<string, any> = { ...initialValues };
         formData.forEach((value, key) => {
           values[key] = value;
         });
@@ -443,6 +443,51 @@ describe('BackRelationAddModal', () => {
       expect(api.saveModelData).not.toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
       expect(mockOnSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it('should submit copied create data with id reset to -1', async () => {
+    const onSubmitData = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <BackRelationAddModal
+        visible={true}
+        mode="create"
+        initialData={{
+          id: 99,
+          name: 'Copied History',
+          description: 'Copied desc',
+          crown_id: 999,
+        }}
+        onSubmitData={onSubmitData}
+        inlineName="crown_history"
+        inlineDesc={mockInlineDesc}
+        relation={mockRelation}
+        mainRecord={mockMainRecord}
+        messageApi={mockMessageApi}
+        onClose={mockOnClose}
+        onSuccess={mockOnSuccess}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('field-name'), {
+      target: { value: 'Copied History' },
+    });
+    fireEvent.change(screen.getByTestId('field-description'), {
+      target: { value: 'Copied desc' },
+    });
+    fireEvent.click(screen.getByTestId('submit-btn'));
+
+    await waitFor(() => {
+      expect(onSubmitData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: -1,
+          crown_id: 1,
+          name: 'Copied History',
+          description: 'Copied desc',
+        }),
+        'create',
+      );
     });
   });
 

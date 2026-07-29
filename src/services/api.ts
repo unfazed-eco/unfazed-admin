@@ -3,9 +3,9 @@
 import { request } from '@umijs/max';
 import { PATH_PREFIX } from '../../config/constants';
 
-// 注释：currentUser API 已删除，改为使用本地存储的用户信息
+// Note: currentUser API has been removed; user info comes from localStorage
 
-/** 退出登录接口 POST /api/auth/logout */
+/** Logout endpoint POST /api/auth/logout */
 export async function outLogin(platform?: string, options?: { [key: string]: any }) {
     return request<Record<string, any>>('/api/auth/logout', {
         method: 'POST',
@@ -14,7 +14,7 @@ export async function outLogin(platform?: string, options?: { [key: string]: any
     });
 }
 
-/** 获取管理员设置 GET /api/${PATH_PREFIX}/settings */
+/** Fetch admin settings GET /api/${PATH_PREFIX}/settings */
 export async function getAdminSettings(options?: { [key: string]: any }) {
     return request<{
         code: number;
@@ -26,9 +26,9 @@ export async function getAdminSettings(options?: { [key: string]: any }) {
     });
 }
 
-/** 登录接口 POST /api/auth/login */
+/** Login endpoint POST /api/auth/login */
 export async function login(body: API.LoginParams, options?: { [key: string]: any }) {
-    // 转换参数以匹配OpenAPI规范
+    // Normalize params to match the OpenAPI contract
     const loginData = {
         account: body.username || body.account || '',
         password: body.password || '',
@@ -46,9 +46,9 @@ export async function login(body: API.LoginParams, options?: { [key: string]: an
     });
 }
 
-/** 注册接口 POST /api/auth/register */
+/** Register endpoint POST /api/auth/register */
 export async function register(body: API.RegisterParams, options?: { [key: string]: any }) {
-    // 转换参数以匹配OpenAPI规范
+    // Normalize params to match the OpenAPI contract
     const registerData = {
         account: body.account || '',
         password: body.password || '',
@@ -66,7 +66,7 @@ export async function register(body: API.RegisterParams, options?: { [key: strin
     });
 }
 
-/** 获取路由列表 GET /api/${PATH_PREFIX}/route-list */
+/** Fetch route list GET /api/${PATH_PREFIX}/route-list */
 export async function getRouteList(options?: { [key: string]: any }) {
     return request<API.RouteListResponse>(`/api/${PATH_PREFIX}/route-list`, {
         method: 'GET',
@@ -74,7 +74,7 @@ export async function getRouteList(options?: { [key: string]: any }) {
     });
 }
 
-/** 获取模型描述 POST /api/${PATH_PREFIX}/model-desc */
+/** Fetch model description POST /api/${PATH_PREFIX}/model-desc */
 export async function getModelDesc(modelName: string, options?: { [key: string]: any }) {
     return request<API.ModelDescResponse>(`/api/${PATH_PREFIX}/model-desc`, {
         method: 'POST',
@@ -88,7 +88,7 @@ export async function getModelDesc(modelName: string, options?: { [key: string]:
     });
 }
 
-/** 获取模型数据 POST /api/${PATH_PREFIX}/model-data */
+/** Fetch model data POST /api/${PATH_PREFIX}/model-data */
 export async function getModelData(params: API.ModelDataRequest, options?: { [key: string]: any }) {
     return request<API.ModelDataResponse>(`/api/${PATH_PREFIX}/model-data`, {
         method: 'POST',
@@ -100,7 +100,7 @@ export async function getModelData(params: API.ModelDataRequest, options?: { [ke
     });
 }
 
-/** 获取模型内联信息 POST /api/${PATH_PREFIX}/model-inlines */
+/** Fetch inline model metadata POST /api/${PATH_PREFIX}/model-inlines */
 export async function getModelInlines(params: API.ModelInlinesRequest, options?: { [key: string]: any }) {
     return request<API.ModelInlinesResponse>(`/api/${PATH_PREFIX}/model-inlines`, {
         method: 'POST',
@@ -112,7 +112,7 @@ export async function getModelInlines(params: API.ModelInlinesRequest, options?:
     });
 }
 
-/** 执行模型操作 POST /api/${PATH_PREFIX}/model-action */
+/** Execute model action POST /api/${PATH_PREFIX}/model-action */
 export async function executeModelAction(params: API.ModelActionRequest, options?: { [key: string]: any }) {
     return request<any>(`/api/${PATH_PREFIX}/model-action`, {
         method: 'POST',
@@ -124,7 +124,7 @@ export async function executeModelAction(params: API.ModelActionRequest, options
     });
 }
 
-/** 保存模型数据 POST /api/${PATH_PREFIX}/model-save */
+/** Save model data POST /api/${PATH_PREFIX}/model-save */
 export async function saveModelData(params: API.ModelSaveRequest, options?: { [key: string]: any }) {
     return request<any>(`/api/${PATH_PREFIX}/model-save`, {
         method: 'POST',
@@ -136,7 +136,7 @@ export async function saveModelData(params: API.ModelSaveRequest, options?: { [k
     });
 }
 
-/** 批量保存模型数据 POST /api/${PATH_PREFIX}/batch-model-save */
+/** Batch save model data POST /api/${PATH_PREFIX}/batch-model-save */
 export async function batchSaveModelData(params: API.ModelBatchSaveRequest, options?: { [key: string]: any }) {
     return request<any>(`/api/${PATH_PREFIX}/batch-model-save`, {
         method: 'POST',
@@ -148,7 +148,7 @@ export async function batchSaveModelData(params: API.ModelBatchSaveRequest, opti
     });
 }
 
-/** 删除模型数据 POST /api/${PATH_PREFIX}/model-delete */
+/** Delete model data POST /api/${PATH_PREFIX}/model-delete */
 export async function deleteModelData(params: API.ModelDeleteRequest, options?: { [key: string]: any }) {
     return request<any>(`/api/${PATH_PREFIX}/model-delete`, {
         method: 'POST',

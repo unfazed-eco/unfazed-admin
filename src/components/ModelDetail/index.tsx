@@ -1,8 +1,12 @@
-import { ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  DeleteOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
-import { Button, Modal, Spin, Tabs } from 'antd';
+import { history, useRequest } from '@umijs/max';
+import { Button, Modal, Spin } from 'antd';
 import React, {
   useCallback,
   useEffect,
@@ -15,6 +19,11 @@ import {
   deleteModelData,
   getModelInlines,
 } from '@/services/api';
+import {
+  clearDetailModified,
+  isDetailModified,
+  markDetailModified,
+} from '@/utils/unsavedGuard';
 import BackRelationAddModal from './BackRelationAddModal';
 import BackRelationBatchAddModal from './BackRelationBatchAddModal';
 import BackRelationSelectionModal from './BackRelationSelectionModal';
@@ -104,6 +113,8 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   ] = useState<ModalVisibilityState>({});
   const [backRelationEditModalRecord, setBackRelationEditModalRecord] =
     useState<ModalRecordState>({});
+  const [backRelationCopyModalRecord, setBackRelationCopyModalRecord] =
+    useState<ModalRecordState>({});
   const [previewInlineData, setPreviewInlineData] =
     useState<InlinePreviewDataState>({});
   const [batchSaveLoading, setBatchSaveLoading] =
@@ -111,6 +122,11 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
   const [linkLoading, setLinkLoading] = useState(false);
   // Global loading state for inline operations
   const [operationLoading, setOperationLoading] = useState(false);
+  // Clear modification flag on mount
+  useEffect(() => {
+    clearDetailModified();
+    return () => clearDetailModified();
+  }, []);
   // Action refs for inline tables to enable reload
   const inlineActionRefs = useRef<InlineActionRefsMap>({});
 
@@ -139,6 +155,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
           data: payloadList,
         });
         if (response?.code === 0) {
+          markDetailModified();
           messageApi.success('Batch saved successfully');
           setPreviewInlineData((prev) => ({
             ...prev,
@@ -179,6 +196,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     setBackRelationAddModalVisible,
     setBackRelationBatchAddModalVisible,
     setBackRelationEditModalRecord,
+    setBackRelationCopyModalRecord,
     previewInlineData,
     setPreviewInlineData,
     setOperationLoading,
@@ -204,6 +222,48 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     },
   );
 
+  const isFormDirty = useCallback(() => isDetailModified(), []);
+
+  // Block route navigation when page has modifications
+  useEffect(() => {
+    const unblock = history.block((tx) => {
+      if (isFormDirty()) {
+        Modal.confirm({
+          title: 'Unsaved Changes',
+          content:
+            'If you leave this page, unsaved changes will be lost. Are you sure?',
+          okText: 'Confirm',
+          cancelText: 'Cancel',
+          onOk: () => {
+            unblock();
+            tx.retry();
+          },
+        });
+      } else {
+        unblock();
+        tx.retry();
+      }
+    });
+    return () => {
+      unblock();
+    };
+  }, [isFormDirty]);
+
+  const handleBack = useCallback(() => {
+    if (isFormDirty()) {
+      Modal.confirm({
+        title: 'Unsaved Changes',
+        content:
+          'If you leave this page, unsaved changes will be lost. Are you sure?',
+        okText: 'Confirm',
+        cancelText: 'Cancel',
+        onOk: () => onBack?.(),
+      });
+    } else {
+      onBack?.();
+    }
+  }, [onBack, isFormDirty]);
+
   // Handle tab change
   const handleTabChange = useCallback(
     (key: string) => {
@@ -223,6 +283,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
       title: 'Confirm Delete',
       content: 'Are you sure you want to delete this record?',
       onOk: async () => {
+        setOperationLoading(true);
         try {
           const response = await deleteModelData({
             name: modelName,
@@ -230,6 +291,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
           });
 
           if (response?.code === 0) {
+            markDetailModified();
             messageApi.success('Deleted successfully');
             onBack?.();
           } else {
@@ -237,6 +299,8 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
           }
         } catch (_error) {
           messageApi.error('Delete failed');
+        } finally {
+          setOperationLoading(false);
         }
       },
     });
@@ -246,45 +310,58 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
     return <div>Loading...</div>;
   }
 
-  // Prepare tab items
-  const tabItems = [
-    {
-      key: 'main',
-      label: 'Main',
-      children: (
-        <MainFormTab
-          modelName={modelName}
-          modelDesc={modelDesc}
-          record={mainRecordData}
-          formRef={formRef}
-          canEdit={canEdit}
-          isCreateMode={isCreateMode}
-          messageApi={messageApi}
-          onBack={onBack}
-          onValuesChange={(values) => {
-            setMainRecordData((prev) => ({ ...prev, ...values }));
-          }}
-        />
-      ),
-    },
+  // Prepare tab list for PageContainer header
+  const tabList = [
+    { key: 'main', tab: 'Main' },
     ...Object.keys(inlineDescs).map((inlineName) => ({
       key: inlineName,
-      label:
+      tab:
         inlineDescs[inlineName]?.attrs?.label ||
         capitalizeFirstLetter(inlineName),
-      children: renderInlineComponent(inlineName),
     })),
   ];
 
+  const renderTabContent = () => {
+    return (
+      <>
+        <div style={{ display: activeTab === 'main' ? 'block' : 'none' }}>
+          <MainFormTab
+            modelName={modelName}
+            modelDesc={modelDesc}
+            record={mainRecordData}
+            formRef={formRef}
+            canEdit={canEdit}
+            isCreateMode={isCreateMode}
+            messageApi={messageApi}
+            onBack={onBack}
+            setOperationLoading={setOperationLoading}
+            onValuesChange={(values) => {
+              setMainRecordData((prev) => ({ ...prev, ...values }));
+            }}
+          />
+        </div>
+        {Object.keys(inlineDescs).map((inlineName) => (
+          <div
+            key={inlineName}
+            style={{ display: activeTab === inlineName ? 'block' : 'none' }}
+          >
+            {renderInlineComponent(inlineName)}
+          </div>
+        ))}
+      </>
+    );
+  };
+
   return (
     <PageContainer
+      className="detail-page-container"
       header={{
         title: isCreateMode
           ? `Create New ${routeLabel || modelName}`
           : `${routeLabel || modelName} Detail`,
         breadcrumb: {},
         extra: [
-          <Button key="back" icon={<ArrowLeftOutlined />} onClick={onBack}>
+          <Button key="back" icon={<ArrowLeftOutlined />} onClick={handleBack}>
             Back
           </Button>,
           modelDesc.attrs.can_delete &&
@@ -299,17 +376,26 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                 Delete
               </Button>
             ),
+          canEdit && activeTab === 'main' && (
+            <Button
+              key="save"
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={() => formRef.current?.submit()}
+            >
+              Save
+            </Button>
+          ),
         ],
       }}
+      tabList={tabList}
+      tabActiveKey={activeTab}
+      onTabChange={handleTabChange}
     >
       {contextHolder}
 
       <Spin spinning={operationLoading} tip="Processing...">
-        <Tabs
-          activeKey={activeTab}
-          onChange={handleTabChange}
-          items={tabItems}
-        />
+        {renderTabContent()}
       </Spin>
 
       {/* M2M relation selection modals */}
@@ -353,7 +439,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                   await handleM2MRemove(inlineName, inlineDesc, removedIds);
                 }
 
-                // Reload the inline table
+                markDetailModified();
                 debouncedReload(inlineName);
               } catch (error) {
                 console.error('M2M operation error:', error);
@@ -413,6 +499,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                   );
                 }
 
+                markDetailModified();
                 setBackRelationModalVisible((prev) => ({
                   ...prev,
                   [inlineName]: false,
@@ -453,6 +540,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                 }));
               }}
               onSuccess={() => {
+                markDetailModified();
                 debouncedReload(inlineName);
               }}
             />
@@ -499,6 +587,45 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
         },
       )}
 
+      {/* Back relation (bk_fk) copy modals - create new related records from row data */}
+      {Object.entries(backRelationCopyModalRecord).map(
+        ([inlineName, copyRecord]) => {
+          if (!copyRecord || !inlineDescs[inlineName]) return null;
+
+          const inlineDesc = inlineDescs[inlineName];
+          const relation = inlineDesc.relation;
+          if (relation?.relation !== 'bk_fk') return null;
+
+          return (
+            <BackRelationAddModal
+              key={`copy-${inlineName}-${copyRecord.id || 'record'}`}
+              visible={true}
+              mode="create"
+              initialData={copyRecord}
+              inlineName={inlineName}
+              inlineDesc={inlineDesc}
+              relation={relation}
+              mainRecord={mainRecordData}
+              messageApi={messageApi}
+              onClose={() => {
+                setBackRelationCopyModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+              }}
+              onSuccess={() => {
+                markDetailModified();
+                setBackRelationCopyModalRecord((prev) => ({
+                  ...prev,
+                  [inlineName]: null,
+                }));
+                debouncedReload(inlineName);
+              }}
+            />
+          );
+        },
+      )}
+
       {/* Back relation (bk_fk) edit modals - for editing existing related records */}
       {Object.entries(backRelationEditModalRecord).map(
         ([inlineName, editRecord]) => {
@@ -525,6 +652,7 @@ const ModelDetail: React.FC<ModelDetailProps> = ({
                 }));
               }}
               onSuccess={() => {
+                markDetailModified();
                 setBackRelationEditModalRecord((prev) => ({
                   ...prev,
                   [inlineName]: null,

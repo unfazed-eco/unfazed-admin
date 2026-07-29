@@ -11,26 +11,29 @@ import {
   ProFormTimePicker,
 } from '@ant-design/pro-components';
 import { Button, Modal } from 'antd';
-import dayjs from 'dayjs';
 import React from 'react';
 import { JsonFieldEditor, ProFormEditorJS } from '@/components';
 import { toJsonString, validateJson } from '@/utils/json';
+import {
+  toDisplayDateTimePickerValue,
+  toUnixTimestamp,
+} from '@/utils/timestamp';
 
 /**
- * 渲染表单字段的公共工具函数
- * @param fieldName 字段名称
- * @param fieldConfig 字段配置
- * @param formRef 表单引用（用于 ImageField 预览功能）
- * @param options 额外选项
+ * Shared helper for rendering form fields.
+ * @param fieldName Field name
+ * @param fieldConfig Field configuration
+ * @param formRef Form reference used for ImageField preview
+ * @param options Extra options
  */
 export const renderFormField = (
   fieldName: string,
   fieldConfig: any,
   formRef?: React.RefObject<ProFormInstance>,
   options?: {
-    /** 是否只读模式 */
+    /** Whether to render in readonly mode */
     readonly?: boolean;
-    /** 自定义通用属性 */
+    /** Custom shared props */
     commonProps?: any;
   },
 ) => {
@@ -59,7 +62,7 @@ export const renderFormField = (
     ...(isReadonly ? { readonly: true, disabled: true } : {}),
   };
 
-  // 根据字段类型渲染不同的组件
+  // Render different components based on the field type.
   switch (fieldConfig.field_type) {
     case 'CharField':
       if (fieldConfig.choices && fieldConfig.choices.length > 0) {
@@ -121,7 +124,24 @@ export const renderFormField = (
       return <ProFormSwitch key={fieldName} {...commonProps} />;
 
     case 'DateField':
-      return <ProFormDatePicker key={fieldName} {...commonProps} />;
+      return (
+        <ProFormDatePicker
+          key={fieldName}
+          {...commonProps}
+          convertValue={(value: any) => {
+            return toDisplayDateTimePickerValue(value);
+          }}
+          // Date fields are calendar values without time-zone semantics.
+          // The backend always returns wall-clock strings, so submit the
+          // picked wall-clock string back unchanged (no timestamp conversion).
+          transform={(value: any) => {
+            if (!value) return { [fieldName]: value };
+            return typeof value.format === 'function'
+              ? { [fieldName]: value.format('YYYY-MM-DD') }
+              : { [fieldName]: value };
+          }}
+        />
+      );
 
     case 'DatetimeField':
       return (
@@ -134,28 +154,34 @@ export const renderFormField = (
           }}
           // Convert timestamp to dayjs for display
           convertValue={(value: any) => {
-            if (!value) return value;
-            // If value is a number (timestamp), convert to dayjs
-            if (typeof value === 'number') {
-              // Check if timestamp is in seconds (10 digits) or milliseconds (13 digits)
-              const ts = String(value).length === 10 ? value * 1000 : value;
-              return dayjs(ts);
-            }
-            // If already a string or dayjs object, return as is
-            return value;
+            return toDisplayDateTimePickerValue(value);
           }}
           // Convert dayjs back to timestamp for submission
           transform={(value: any) => {
-            if (!value) return { [fieldName]: value };
-            // Convert to timestamp (seconds)
-            const timestamp = dayjs(value).unix();
-            return { [fieldName]: timestamp };
+            return { [fieldName]: toUnixTimestamp(value) };
           }}
         />
       );
 
     case 'TimeField':
-      return <ProFormTimePicker key={fieldName} {...commonProps} />;
+      return (
+        <ProFormTimePicker
+          key={fieldName}
+          {...commonProps}
+          convertValue={(value: any) => {
+            return toDisplayDateTimePickerValue(value);
+          }}
+          // Time fields are clock values without time-zone semantics.
+          // The backend always returns wall-clock strings, so submit the
+          // picked wall-clock string back unchanged (no timestamp conversion).
+          transform={(value: any) => {
+            if (!value) return { [fieldName]: value };
+            return typeof value.format === 'function'
+              ? { [fieldName]: value.format('HH:mm:ss') }
+              : { [fieldName]: value };
+          }}
+        />
+      );
 
     case 'EditorField':
       return (
@@ -163,10 +189,47 @@ export const renderFormField = (
           key={fieldName}
           {...commonProps}
           fieldProps={{
-            height: 300,
             readOnly: isReadonly,
             config: {
               placeholder: commonProps.tooltip || 'Start writing your story...',
+              removePlugins: ['ImageUpload', 'EasyImage', 'CKFinder', 'CKBox'],
+              toolbar: {
+                removeItems: [
+                  'uploadImage',
+                  'imageUpload',
+                  'ckfinder',
+                  'ckbox',
+                  'mediaEmbed',
+                ],
+              },
+              image: {
+                insert: { type: 'auto' },
+                resizeUnit: 'px',
+                resizeOptions: [
+                  {
+                    name: 'resizeImage:original',
+                    value: null,
+                    label: 'Original',
+                  },
+                  {
+                    name: 'resizeImage:custom',
+                    label: 'Custom',
+                    value: 'custom',
+                  },
+                  { name: 'resizeImage:200', value: '200', label: '200px' },
+                  { name: 'resizeImage:400', value: '400', label: '400px' },
+                ],
+                toolbar: [
+                  'imageStyle:inline',
+                  'imageStyle:block',
+                  'imageStyle:wrapText',
+                  '|',
+                  'resizeImage',
+                  '|',
+                  'toggleImageCaption',
+                  'imageTextAlternative',
+                ],
+              },
             },
           }}
         />
@@ -280,20 +343,20 @@ export const renderFormField = (
 };
 
 /**
- * 批量渲染表单字段
- * @param fields 字段配置对象
- * @param formRef 表单引用
- * @param options 额外选项
+ * Render multiple form fields in a batch.
+ * @param fields Field configuration map
+ * @param formRef Form reference
+ * @param options Extra options
  */
 export const renderFormFields = (
   fields: Record<string, any>,
   formRef?: React.RefObject<ProFormInstance>,
   options?: {
-    /** 是否只读模式 */
+    /** Whether to render in readonly mode */
     readonly?: boolean;
-    /** 字段过滤函数 */
+    /** Field filter function */
     fieldFilter?: (fieldName: string, fieldConfig: any) => boolean;
-    /** 自定义通用属性 */
+    /** Custom shared props */
     commonProps?: any;
   },
 ) => {
@@ -301,13 +364,13 @@ export const renderFormFields = (
 
   return Object.entries(fields)
     .map(([fieldName, fieldConfig]: [string, any]) => {
-      // 如果字段不显示，跳过
+      // Skip fields that should not be shown.
       if (fieldConfig.show === false) return null;
 
-      // 如果有自定义过滤函数，应用过滤
+      // Apply the custom field filter when provided.
       if (fieldFilter && !fieldFilter(fieldName, fieldConfig)) return null;
 
       return renderFormField(fieldName, fieldConfig, formRef, renderOptions);
     })
-    .filter(Boolean); // 过滤掉 null 值
+    .filter(Boolean); // Filter out null entries.
 };

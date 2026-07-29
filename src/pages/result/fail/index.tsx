@@ -9,7 +9,7 @@ export default () => {
   const Content = (
     <Fragment>
       <div className={styles.title}>
-        <span>您提交的内容有如下错误：</span>
+        <span>There are issues with the content you submitted:</span>
       </div>
       <div
         style={{
@@ -22,13 +22,13 @@ export default () => {
           }}
           className={styles.error_icon}
         />
-        <span>您的账户已被冻结</span>
+        <span>Your account has been frozen</span>
         <a
           style={{
             marginLeft: 16,
           }}
         >
-          <span>立即解冻</span>
+          <span>Unfreeze now</span>
           <RightOutlined />
         </a>
       </div>
@@ -39,13 +39,13 @@ export default () => {
           }}
           className={styles.error_icon}
         />
-        <span>您的账户还不具备申请资格</span>
+        <span>Your account is not yet eligible to apply</span>
         <a
           style={{
             marginLeft: 16,
           }}
         >
-          <span>立即升级</span>
+          <span>Upgrade now</span>
           <RightOutlined />
         </a>
       </div>
@@ -56,11 +56,11 @@ export default () => {
       <Card bordered={false}>
         <Result
           status="error"
-          title="提交失败"
-          subTitle="请核对并修改以下信息后，再重新提交。"
+          title="Submission failed"
+          subTitle="Please review and correct the following information before submitting again."
           extra={
             <Button type="primary">
-              <span>返回修改</span>
+              <span>Back to edit</span>
             </Button>
           }
           style={{

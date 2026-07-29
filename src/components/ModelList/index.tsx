@@ -18,6 +18,7 @@
 import type { ActionType } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
+import { Spin } from 'antd';
 import React, { useCallback, useRef, useState } from 'react';
 import { FileUploadModal, StringInputModal } from '@/components/ActionModals';
 import { useModelOperations } from '@/hooks/useModelOperations';
@@ -54,6 +55,7 @@ const ModelList: React.FC<ModelListProps> = ({
     null,
   );
   const [_editableKeys, setEditableRowKeys] = useState<React.Key[]>([]);
+  const [operationLoading, setOperationLoading] = useState(false);
 
   // Action handler hook
   const {
@@ -106,10 +108,15 @@ const ModelList: React.FC<ModelListProps> = ({
   // Save edited data
   const handleSave = useCallback(
     async (key: React.Key, record: Record<string, any>) => {
-      const success = await saveData(record);
-      if (success) {
-        setEditableRowKeys((prevKeys) => prevKeys.filter((k) => k !== key));
-        actionRef.current?.reload?.();
+      setOperationLoading(true);
+      try {
+        const success = await saveData(record);
+        if (success) {
+          setEditableRowKeys((prevKeys) => prevKeys.filter((k) => k !== key));
+          actionRef.current?.reload?.();
+        }
+      } finally {
+        setOperationLoading(false);
       }
     },
     [saveData],
@@ -118,6 +125,7 @@ const ModelList: React.FC<ModelListProps> = ({
   // Handle delete
   const handleDelete = useCallback(
     async (record: Record<string, any>) => {
+      setOperationLoading(true);
       try {
         const response = await deleteModelData({
           name: modelName,
@@ -132,6 +140,8 @@ const ModelList: React.FC<ModelListProps> = ({
         }
       } catch (_error) {
         messageApi.error('Delete failed');
+      } finally {
+        setOperationLoading(false);
       }
     },
     [modelName, messageApi],
@@ -139,7 +149,7 @@ const ModelList: React.FC<ModelListProps> = ({
 
   // Handle action
   const handleAction = useCallback(
-    (
+    async (
       actionKey: string,
       action: any,
       record?: any,
@@ -148,18 +158,22 @@ const ModelList: React.FC<ModelListProps> = ({
       searchParams?: Record<string, any>,
     ) => {
       if (actionKey === 'add') {
-        // Handle add: navigate to ModelDetail with id = -1 for create mode
         const newRecord = { id: -1 };
         onDetail?.(newRecord);
       } else {
-        triggerAction(
-          actionKey,
-          action,
-          record,
-          isBatch,
-          records || [],
-          searchParams,
-        );
+        setOperationLoading(true);
+        try {
+          await triggerAction(
+            actionKey,
+            action,
+            record,
+            isBatch,
+            records || [],
+            searchParams,
+          );
+        } finally {
+          setOperationLoading(false);
+        }
       }
     },
     [onDetail, triggerAction],
@@ -193,34 +207,36 @@ const ModelList: React.FC<ModelListProps> = ({
       />
 
       {/* List display */}
-      <CommonProTable
-        modelDesc={modelDesc}
-        modelName={modelName}
-        onDetail={onDetail}
-        actionRef={actionRef}
-        onAction={handleAction}
-        onSave={async (record: any) => {
-          await handleSave(
-            record.id || record.key || JSON.stringify(record),
-            record,
-          );
-        }}
-        onDelete={handleDelete}
-        onRequest={wrappedFetchModelData}
-        tableProps={{
-          pagination: {
-            defaultPageSize:
-              getStoredSettings().pageSize ||
-              modelDesc.attrs.list_per_page ||
-              20,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: modelDesc.attrs.list_per_page_options || [
-              10, 20, 50, 100,
-            ],
-          },
-        }}
-      />
+      <Spin spinning={operationLoading} tip="Processing...">
+        <CommonProTable
+          modelDesc={modelDesc}
+          modelName={modelName}
+          onDetail={onDetail}
+          actionRef={actionRef}
+          onAction={handleAction}
+          onSave={async (record: any) => {
+            await handleSave(
+              record.id || record.key || JSON.stringify(record),
+              record,
+            );
+          }}
+          onDelete={handleDelete}
+          onRequest={wrappedFetchModelData}
+          tableProps={{
+            pagination: {
+              defaultPageSize:
+                getStoredSettings().pageSize ||
+                modelDesc.attrs.list_per_page ||
+                20,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              pageSizeOptions: modelDesc.attrs.list_per_page_options || [
+                10, 20, 50, 100,
+              ],
+            },
+          }}
+        />
+      </Spin>
     </PageContainer>
   );
 };

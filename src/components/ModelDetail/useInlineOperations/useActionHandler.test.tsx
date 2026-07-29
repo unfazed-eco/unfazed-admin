@@ -274,6 +274,44 @@ describe('useActionHandler', () => {
       consoleSpy.mockRestore();
     });
 
+    it('should handle confirmed action exception without hanging', async () => {
+      const { Modal } = require('antd');
+      (api.executeModelAction as jest.Mock).mockRejectedValue(
+        new Error('Network error'),
+      );
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const confirmSpy = jest
+        .spyOn(Modal, 'confirm')
+        .mockImplementation((config: any) => {
+          config.onOk?.();
+          return { destroy: jest.fn(), update: jest.fn() };
+        });
+
+      const { result } = renderHook(() =>
+        useActionHandler({ messageApi: mockMessageApi }),
+      );
+
+      await act(async () => {
+        await result.current.handleInlineAction(
+          'model',
+          'action',
+          { output: 'toast', confirm: true },
+          { id: 1 },
+        );
+      });
+
+      expect(mockMessageApi.error).toHaveBeenCalledWith('Action failed');
+      expect(api.executeModelAction).toHaveBeenCalledWith({
+        name: 'model',
+        action: 'action',
+        form_data: { id: 1 },
+        search_condition: [{ field: 'id', eq: 1 }],
+      });
+
+      confirmSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+
     it('should use default success message when no message provided', async () => {
       (api.executeModelAction as jest.Mock).mockResolvedValue({
         code: 0,

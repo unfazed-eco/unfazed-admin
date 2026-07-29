@@ -134,22 +134,31 @@ export const useActionHandler = ({ messageApi }: UseActionHandlerOptions) => {
     ) => {
       try {
         if (action?.confirm) {
-          Modal.confirm({
-            title: action.label || action.name || actionKey,
-            content:
-              action.description ||
-              'Are you sure you want to execute this action?',
-            okText: 'Confirm',
-            cancelText: 'Cancel',
-            onOk: () =>
-              executeInlineAction(
-                inlineName,
-                actionKey,
-                action,
-                record,
-                isBatch,
-                searchParams,
-              ),
+          await new Promise<void>((resolve, reject) => {
+            Modal.confirm({
+              title: action.label || action.name || actionKey,
+              content:
+                action.description ||
+                'Are you sure you want to execute this action?',
+              okText: 'Confirm',
+              cancelText: 'Cancel',
+              onOk: async () => {
+                try {
+                  await executeInlineAction(
+                    inlineName,
+                    actionKey,
+                    action,
+                    record,
+                    isBatch,
+                    searchParams,
+                  );
+                  resolve();
+                } catch (error) {
+                  reject(error);
+                }
+              },
+              onCancel: () => resolve(),
+            });
           });
           return;
         }

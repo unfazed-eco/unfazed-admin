@@ -77,6 +77,7 @@ describe('MainFormTab', () => {
         isCreateMode: false,
         messageApi,
         onBack: jest.fn(),
+        setOperationLoading: jest.fn(),
         onValuesChange: jest.fn(),
         ...props,
       }),

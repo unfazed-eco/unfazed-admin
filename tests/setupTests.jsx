@@ -1,6 +1,9 @@
 ﻿import { defaultConfig } from 'antd/lib/theme/internal';
 
+import React from 'react';
+
 defaultConfig.hashed = false;
+globalThis.React = React;
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -92,6 +95,27 @@ jest.mock('@ckeditor/ckeditor5-build-classic', () => ({
           view: {
             document: {
               on: jest.fn(),
+            },
+          },
+        },
+      });
+    },
+  },
+}));
+
+jest.mock('@ckeditor/ckeditor5-build-decoupled-document', () => ({
+  __esModule: true,
+  default: {
+    create() {
+      return Promise.resolve({
+        destroy: jest.fn(),
+        getData: jest.fn(() => ''),
+        setData: jest.fn(),
+        ui: {
+          getEditableElement: jest.fn(),
+          view: {
+            toolbar: {
+              element: globalThis.document?.createElement('div') ?? {},
             },
           },
         },

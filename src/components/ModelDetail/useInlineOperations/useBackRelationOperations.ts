@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { saveModelData } from '@/services/api';
+import { currentUnixTimestamp } from '@/utils/timestamp';
+import { markDetailModified } from '@/utils/unsavedGuard';
 
 interface UseBackRelationOperationsOptions {
   mainRecord: Record<string, any>;
@@ -25,7 +27,7 @@ export const useBackRelationOperations = ({
               data: {
                 ...targetRecord,
                 [relation.target_field]: mainRecord[relation.source_field],
-                updated_at: Math.floor(Date.now() / 1000),
+                updated_at: currentUnixTimestamp(),
               },
             });
 
@@ -38,6 +40,7 @@ export const useBackRelationOperations = ({
           messageApi.success(
             `Successfully linked ${targetRecords.length} record(s)`,
           );
+          markDetailModified();
           // Note: Don't call loadInlineData here - back relation tables use onRequest
           // The caller should call reload() on the table's actionRef instead
         }
@@ -67,11 +70,12 @@ export const useBackRelationOperations = ({
             data: {
               ...targetRecord,
               [relation.target_field]: negativeFkValue,
-              updated_at: Math.floor(Date.now() / 1000),
+              updated_at: currentUnixTimestamp(),
             },
           });
 
           if (response?.code === 0) {
+            markDetailModified();
             messageApi.success('Unlinked successfully');
             // Note: Don't call loadInlineData here - back relation tables use onRequest
             // The caller should call reload() on the table's actionRef instead

@@ -11,11 +11,11 @@ const RegisterResult: React.FC<Record<string, unknown>> = () => {
     <div className={styles.actions}>
       <a href="">
         <Button size="large" type="primary">
-          <span>查看邮箱</span>
+          <span>Open mailbox</span>
         </Button>
       </a>
       <Link to="/">
-        <Button size="large">返回首页</Button>
+        <Button size="large">Back to home</Button>
       </Link>
     </div>
   );
@@ -27,10 +27,10 @@ const RegisterResult: React.FC<Record<string, unknown>> = () => {
       status="success"
       title={
         <div className={styles.title}>
-          <span>你的账户：{email} 注册成功</span>
+          <span>Your account: {email} has been registered successfully</span>
         </div>
       }
-      subTitle="激活邮件已发送到你的邮箱中，邮件有效期为24小时。请及时登录邮箱，点击邮件中的链接激活帐户。"
+      subTitle="An activation email has been sent to your inbox and will remain valid for 24 hours. Please sign in to your email and click the link to activate your account."
       extra={actions}
     />
   );

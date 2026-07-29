@@ -168,9 +168,13 @@ describe('ModelList/useActionHandler', () => {
       result.current.triggerAction('display', { input: 'none' }, { id: 1 });
     });
 
-    expect(showDisplayModal).toHaveBeenCalledWith([{ id: 1 }], {
-      output: 'display',
-    });
+    expect(showDisplayModal).toHaveBeenCalledWith(
+      [{ id: 1 }],
+      {
+        output: 'display',
+      },
+      { name: 'x' },
+    );
   });
 
   it('runs batch action and fallback search params', async () => {

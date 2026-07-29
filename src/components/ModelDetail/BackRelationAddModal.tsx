@@ -49,6 +49,8 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
     ? 'Updated successfully'
     : 'Created successfully';
   const failedMessage = isEditMode ? 'Update failed' : 'Create failed';
+  const initialValues =
+    !isEditMode && initialData ? { ...initialData, id: -1 } : initialData || {};
 
   return (
     <Modal
@@ -68,7 +70,7 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
         layout="horizontal"
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
-        initialValues={isEditMode ? initialData || {} : undefined}
+        initialValues={initialValues}
         onFinish={async (values) => {
           try {
             // Keep original record payload for update mode, then merge user changes.
@@ -114,30 +116,44 @@ const BackRelationAddModal: React.FC<BackRelationAddModalProps> = ({
           onReset: onClose,
         }}
       >
-        {Object.entries(inlineDesc?.fields || {}).map(
-          ([fieldName, fieldConfig]: [string, any]) => {
-            // Skip the relation field (it will be set automatically).
-            if (relationFieldName && fieldName === relationFieldName) {
-              return null;
-            }
-            // Skip readonly fields and hidden fields
-            if (fieldConfig.readonly || fieldConfig.show === false) return null;
+        {(() => {
+          const listEditable = (inlineDesc?.attrs as any)?.list_editable as
+            | string[]
+            | undefined;
 
-            return renderFormField(fieldName, fieldConfig, undefined, {
-              commonProps: {
-                rules:
-                  fieldConfig.blank === false
-                    ? [
-                        {
-                          required: true,
-                          message: `${fieldConfig.name || fieldName} is required`,
-                        },
-                      ]
-                    : [],
-              },
-            });
-          },
-        )}
+          return Object.entries(inlineDesc?.fields || {}).map(
+            ([fieldName, fieldConfig]: [string, any]) => {
+              // Skip the relation field (it will be set automatically).
+              if (relationFieldName && fieldName === relationFieldName) {
+                return null;
+              }
+              // Skip readonly fields and hidden fields
+              if (fieldConfig.readonly || fieldConfig.show === false)
+                return null;
+
+              // In edit mode, list_editable controls which fields are editable
+              let isReadonly = false;
+              if (isEditMode && listEditable && listEditable.length > 0) {
+                isReadonly = !listEditable.includes(fieldName);
+              }
+
+              return renderFormField(fieldName, fieldConfig, undefined, {
+                commonProps: {
+                  readonly: isReadonly,
+                  rules:
+                    fieldConfig.blank === false
+                      ? [
+                          {
+                            required: true,
+                            message: `${fieldConfig.name || fieldName} is required`,
+                          },
+                        ]
+                      : [],
+                },
+              });
+            },
+          );
+        })()}
       </ProForm>
     </Modal>
   );

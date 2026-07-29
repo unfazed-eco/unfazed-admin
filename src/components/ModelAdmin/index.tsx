@@ -16,7 +16,7 @@ const ModelAdmin: React.FC<ModelAdminProps> = ({ modelName, routeLabel }) => {
     null,
   );
 
-  // 当 modelName 变化时，重置组件状态
+  // Reset component state when the model name changes.
   useEffect(() => {
     console.log('ModelAdmin: modelName changed to', modelName);
     setCurrentView('list');
@@ -24,19 +24,19 @@ const ModelAdmin: React.FC<ModelAdminProps> = ({ modelName, routeLabel }) => {
     setModelDesc(null);
   }, [modelName]);
 
-  // 处理查看详情操作
+  // Handle the detail action.
   const handleDetail = (record: Record<string, any>) => {
     setCurrentRecord(record);
     setCurrentView('detail');
   };
 
-  // 返回列表
+  // Return to the list view.
   const handleBackToList = () => {
     setCurrentView('list');
     setCurrentRecord(null);
   };
 
-  // 处理模型描述加载
+  // Handle model description loading.
   const handleModelDescLoaded = (loadedModelDesc: API.AdminSerializeModel) => {
     setModelDesc(loadedModelDesc);
   };
@@ -44,7 +44,7 @@ const ModelAdmin: React.FC<ModelAdminProps> = ({ modelName, routeLabel }) => {
   if (!modelName) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
-        <h2>请指定模型名称</h2>
+        <h2>Please specify a model name</h2>
         <p>Model name is required</p>
       </div>
     );

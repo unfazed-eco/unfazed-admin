@@ -182,7 +182,7 @@ describe('Register Page', () => {
     fireEvent.click(screen.getByText('change-prefix'));
     expect(screen.getByTestId('select-value').textContent).toBe('87');
 
-    fireEvent.click(screen.getByText('获取验证码'));
+    fireEvent.click(screen.getByText('Get code'));
     expect(screen.getByText('59 s')).toBeTruthy();
     act(() => {
       jest.advanceTimersByTime(1000);
@@ -198,7 +198,7 @@ describe('Register Page', () => {
     mockUseRequestOptions.onSuccess({ code: 0, status: 'ok' }, [
       { mail: 'x@y.z' },
     ]);
-    expect(mockMessageSuccess).toHaveBeenCalledWith('注册成功！');
+    expect(mockMessageSuccess).toHaveBeenCalledWith('Registered successfully!');
     expect(mockHistoryPush).toHaveBeenCalledWith({
       pathname: '/user/register-result?account=x@y.z',
     });
@@ -209,7 +209,9 @@ describe('Register Page', () => {
     expect(mockMessageError).toHaveBeenCalledWith('bad-register');
 
     mockUseRequestOptions.onError(new Error('network-error'));
-    expect(mockMessageError).toHaveBeenCalledWith('注册失败，请重试！');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      'Registration failed. Please try again!',
+    );
   });
 
   it('covers password and confirm validators', async () => {
@@ -218,12 +220,16 @@ describe('Register Page', () => {
     const checkPassword = mockFormItemPropsByName.password.rules[0].validator;
     const checkConfirm = mockFormItemPropsByName.confirm.rules[1].validator;
 
-    await expect(checkPassword({}, '')).rejects.toBe('请输入密码!');
+    await expect(checkPassword({}, '')).rejects.toBe(
+      'Please enter a password!',
+    );
     await expect(checkPassword({}, '12345')).rejects.toBe('');
     await expect(checkPassword({}, '123456')).resolves.toBeUndefined();
 
     mockPasswordValue = 'abcdef';
-    await expect(checkConfirm({}, 'abc')).rejects.toBe('两次输入的密码不匹配!');
+    await expect(checkConfirm({}, 'abc')).rejects.toBe(
+      'The two passwords do not match!',
+    );
     await expect(checkConfirm({}, 'abcdef')).resolves.toBeUndefined();
   });
 });

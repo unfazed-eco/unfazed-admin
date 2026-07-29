@@ -85,7 +85,7 @@ export const useActionHandler = ({
             (result.actionConfig as any)?.output === 'display' &&
             result.data
           ) {
-            showDisplayModal(result.data, result.actionConfig);
+            showDisplayModal(result.data, result.actionConfig, modelDesc);
           } else {
             // Other output types handled in hook
             actionRef.current?.reload?.();
@@ -101,7 +101,7 @@ export const useActionHandler = ({
   );
 
   const executeActionWithConfirm = useCallback(
-    (
+    async (
       actionKey: string,
       actionConfig: any,
       record?: Record<string, any>,
@@ -109,9 +109,9 @@ export const useActionHandler = ({
       records: Record<string, any>[] = [],
       extra?: any,
       searchParams?: Record<string, any>,
-    ) => {
+    ): Promise<void> => {
       if (!actionConfig?.confirm) {
-        executeAction(
+        await executeAction(
           actionKey,
           actionConfig,
           record,
@@ -123,23 +123,26 @@ export const useActionHandler = ({
         return;
       }
 
-      Modal.confirm({
-        title: actionConfig.label || actionConfig.name || actionKey,
-        content:
-          actionConfig.description ||
-          'Are you sure you want to execute this action?',
-        okText: 'Confirm',
-        cancelText: 'Cancel',
-        onOk: () =>
-          executeAction(
-            actionKey,
-            actionConfig,
-            record,
-            isBatch,
-            records,
-            extra,
-            searchParams,
-          ),
+      return new Promise<void>((resolve) => {
+        Modal.confirm({
+          title: actionConfig.label || actionConfig.name || actionKey,
+          content:
+            actionConfig.description ||
+            'Are you sure you want to execute this action?',
+          okText: 'Confirm',
+          cancelText: 'Cancel',
+          onOk: () =>
+            executeAction(
+              actionKey,
+              actionConfig,
+              record,
+              isBatch,
+              records,
+              extra,
+              searchParams,
+            ).then(() => resolve()),
+          onCancel: () => resolve(),
+        });
       });
     },
     [executeAction],
@@ -147,7 +150,7 @@ export const useActionHandler = ({
 
   // Trigger action (based on input type)
   const triggerAction = useCallback(
-    (
+    async (
       actionKey: string,
       actionConfig: any,
       record?: Record<string, any>,
@@ -183,7 +186,7 @@ export const useActionHandler = ({
           break;
         default:
           // Execute directly
-          executeActionWithConfirm(
+          await executeActionWithConfirm(
             actionKey,
             actionConfig,
             record,
@@ -200,18 +203,22 @@ export const useActionHandler = ({
 
   // String input modal confirm handler
   const handleStringInputConfirm = useCallback(
-    (inputValue: string) => {
+    async (inputValue: string) => {
       if (currentAction) {
         const extra = { input: inputValue };
-        executeActionWithConfirm(
-          currentAction.actionKey,
-          currentAction.actionConfig,
-          currentAction.record,
-          currentAction.isBatch,
-          currentAction.records || [],
-          extra,
-          currentAction.searchParams,
-        );
+        try {
+          await executeActionWithConfirm(
+            currentAction.actionKey,
+            currentAction.actionConfig,
+            currentAction.record,
+            currentAction.isBatch,
+            currentAction.records || [],
+            extra,
+            currentAction.searchParams,
+          );
+        } catch (error) {
+          console.error('String input action error:', error);
+        }
       }
       setStringModalVisible(false);
       setCurrentAction(null);
@@ -221,27 +228,28 @@ export const useActionHandler = ({
 
   // File upload modal confirm handler
   const handleFileUploadConfirm = useCallback(
-    (files: File[]) => {
+    async (files: File[]) => {
       if (currentAction) {
-        // Convert files to backend required format
-        const filePromises = files.map((file) => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              resolve({
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                content: reader.result, // base64 data URL
-              });
-            };
-            reader.readAsDataURL(file);
+        try {
+          const filePromises = files.map((file) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                resolve({
+                  name: file.name,
+                  size: file.size,
+                  type: file.type,
+                  content: reader.result,
+                });
+              };
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(file);
+            });
           });
-        });
 
-        Promise.all(filePromises).then((filesData) => {
+          const filesData = await Promise.all(filePromises);
           const extra = { files: filesData };
-          executeActionWithConfirm(
+          await executeActionWithConfirm(
             currentAction.actionKey,
             currentAction.actionConfig,
             currentAction.record,
@@ -250,7 +258,9 @@ export const useActionHandler = ({
             extra,
             currentAction.searchParams,
           );
-        });
+        } catch (error) {
+          console.error('File upload action error:', error);
+        }
       }
       setFileModalVisible(false);
       setCurrentAction(null);

@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import CommonProTable from './index';
+
+const mockSortableHeaderClick = jest.fn();
 
 // Mock antd components
 jest.mock('antd', () => {
@@ -19,11 +21,23 @@ jest.mock('@ant-design/pro-components', () => {
   const originalModule = jest.requireActual('@ant-design/pro-components');
   return {
     ...originalModule,
-    ProTable: ({ columns, dataSource, toolBarRender, ...props }: any) => {
+    ProTable: ({
+      columns,
+      dataSource,
+      toolBarRender,
+      components,
+      scroll,
+      tableLayout,
+    }: any) => {
       const toolbar = toolBarRender?.();
+      const HeaderCell = components?.header?.cell || 'th';
       return React.createElement(
         'div',
-        { 'data-testid': 'pro-table', ...props },
+        {
+          'data-testid': 'pro-table',
+          'data-scroll-x': scroll?.x,
+          'data-table-layout': tableLayout,
+        },
         toolbar
           ? React.createElement(
               'div',
@@ -40,12 +54,16 @@ jest.mock('@ant-design/pro-components', () => {
             React.createElement(
               'tr',
               null,
-              columns?.map((col: any, index: number) =>
-                React.createElement(
-                  'th',
+              columns?.map((col: any, index: number) => {
+                const headerCellProps = col.onHeaderCell?.(col) || {};
+                return React.createElement(
+                  HeaderCell,
                   {
+                    ...headerCellProps,
                     key: col.key || index,
                     'data-testid': `column-${col.dataIndex}`,
+                    onClick: col.sorter ? mockSortableHeaderClick : undefined,
+                    style: { width: col.width },
                   },
                   col.title,
                   col.sorter &&
@@ -68,8 +86,8 @@ jest.mock('@ant-design/pro-components', () => {
                       { 'data-testid': `editable-${col.dataIndex}` },
                       'editable',
                     ),
-                ),
-              ),
+                );
+              }),
             ),
           ),
           React.createElement(
@@ -152,6 +170,10 @@ describe('CommonProTable', () => {
     { id: 1, name: 'Item A', status: 'active', created_at: '2024-01-01' },
     { id: 2, name: 'Item B', status: 'inactive', created_at: '2024-01-02' },
   ];
+
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
 
   describe('list_order', () => {
     it('should order columns according to list_order', () => {
@@ -356,6 +378,240 @@ describe('CommonProTable', () => {
 
       // Detail button should always be present (Actions column should exist)
       expect(screen.getByTestId('column-option')).toBeTruthy();
+    });
+  });
+
+  describe('column resize', () => {
+    it('should render full text content so resized columns can reveal it', () => {
+      const longName =
+        'Antique Crown Antique Crown Antique Crown Antique Crown Antique Crown';
+
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={[
+            {
+              id: 9,
+              name: longName,
+              status: 'active',
+              created_at: '2024-01-01',
+            },
+          ]}
+        />,
+      );
+
+      expect(screen.getByText(longName)).toBeTruthy();
+      expect(screen.queryByText('Antique Crown Antiqu...')).toBeNull();
+      expect(screen.getByTestId('column-name').style.width).toBe('150px');
+      expect(
+        screen.getByTestId('pro-table').getAttribute('data-table-layout'),
+      ).toBe('fixed');
+      expect(
+        Number(screen.getByTestId('pro-table').getAttribute('data-scroll-x')),
+      ).toBeGreaterThan(0);
+    });
+
+    it('should resize data columns and persist widths without resizing actions', () => {
+      const { container } = render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={mockData}
+          onDetail={jest.fn()}
+        />,
+      );
+
+      const nameHeader = screen.getByTestId('column-name');
+      const resizeHandle = nameHeader.querySelector(
+        '.common-pro-table-column-resize-handle',
+      );
+      expect(resizeHandle).toBeTruthy();
+
+      fireEvent.mouseDown(resizeHandle as Element, { clientX: 200 });
+      fireEvent.mouseMove(document, { clientX: 260 });
+      fireEvent.mouseUp(document);
+
+      expect(screen.getByTestId('column-name').style.width).toBe('210px');
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(
+            'unfazed-admin:table-column-widths:test',
+          ) || '{}',
+        ).name,
+      ).toBe(210);
+
+      expect(
+        container
+          .querySelector('[data-testid="column-option"]')
+          ?.querySelector('.common-pro-table-column-resize-handle'),
+      ).toBeNull();
+    });
+
+    it('should not bubble resize handle clicks to sortable header cells', () => {
+      render(
+        <CommonProTable
+          modelDesc={{
+            ...mockModelDesc,
+            attrs: {
+              ...mockModelDesc.attrs,
+              list_sort: ['name'],
+            },
+          }}
+          modelName="test"
+          data={mockData}
+        />,
+      );
+
+      const nameHeader = screen.getByTestId('column-name');
+      const resizeHandle = nameHeader.querySelector(
+        '.common-pro-table-column-resize-handle',
+      );
+
+      fireEvent.mouseDown(resizeHandle as Element, { clientX: 200 });
+      fireEvent.mouseMove(document, { clientX: 240 });
+      fireEvent.mouseUp(resizeHandle as Element);
+      fireEvent.click(resizeHandle as Element);
+
+      expect(mockSortableHeaderClick).not.toHaveBeenCalled();
+    });
+
+    it('should release resizing when mouseup happens on the resize handle', () => {
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={mockData}
+        />,
+      );
+
+      const nameHeader = screen.getByTestId('column-name');
+      const resizeHandle = nameHeader.querySelector(
+        '.common-pro-table-column-resize-handle',
+      );
+
+      fireEvent.mouseDown(resizeHandle as Element, { clientX: 200 });
+      fireEvent.mouseUp(resizeHandle as Element, { clientX: 200 });
+      fireEvent.mouseMove(document, { clientX: 300 });
+
+      expect(screen.getByTestId('column-name').style.width).toBe('150px');
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(
+            'unfazed-admin:table-column-widths:test',
+          ) || '{}',
+        ).name,
+      ).toBeUndefined();
+    });
+
+    it('should resize from the rendered header width when content already stretched the column', () => {
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={[
+            {
+              id: 9,
+              name: 'Antique Crown Antique Crown Antique Crown Antique Crown Antique Crown',
+              status: 'active',
+              created_at: '2024-01-01',
+            },
+          ]}
+        />,
+      );
+
+      const nameHeader = screen.getByTestId('column-name');
+      nameHeader.getBoundingClientRect = jest.fn(
+        () =>
+          ({
+            width: 360,
+            height: 40,
+            top: 0,
+            right: 360,
+            bottom: 40,
+            left: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      );
+
+      const resizeHandle = nameHeader.querySelector(
+        '.common-pro-table-column-resize-handle',
+      );
+
+      fireEvent.mouseDown(resizeHandle as Element, { clientX: 200 });
+      fireEvent.mouseMove(document, { clientX: 260 });
+      fireEvent.mouseUp(document);
+
+      expect(screen.getByTestId('column-name').style.width).toBe('420px');
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(
+            'unfazed-admin:table-column-widths:test',
+          ) || '{}',
+        ).name,
+      ).toBe(420);
+    });
+
+    it('should shrink from the rendered header width', () => {
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={mockData}
+        />,
+      );
+
+      const nameHeader = screen.getByTestId('column-name');
+      nameHeader.getBoundingClientRect = jest.fn(
+        () =>
+          ({
+            width: 300,
+            height: 40,
+            top: 0,
+            right: 300,
+            bottom: 40,
+            left: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      );
+
+      const resizeHandle = nameHeader.querySelector(
+        '.common-pro-table-column-resize-handle',
+      );
+
+      fireEvent.mouseDown(resizeHandle as Element, { clientX: 260 });
+      fireEvent.mouseMove(document, { clientX: 180 });
+      fireEvent.mouseUp(document);
+
+      expect(screen.getByTestId('column-name').style.width).toBe('220px');
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(
+            'unfazed-admin:table-column-widths:test',
+          ) || '{}',
+        ).name,
+      ).toBe(220);
+    });
+
+    it('should restore stored data column widths by model name', () => {
+      window.localStorage.setItem(
+        'unfazed-admin:table-column-widths:test',
+        JSON.stringify({ name: 240 }),
+      );
+
+      render(
+        <CommonProTable
+          modelDesc={mockModelDesc}
+          modelName="test"
+          data={mockData}
+        />,
+      );
+
+      expect(screen.getByTestId('column-name').style.width).toBe('240px');
     });
   });
 

@@ -1,9 +1,9 @@
 /**
- * 这个文件作为组件的目录
- * 目的是统一管理对外输出的组件，方便分类
+ * This file serves as the component index.
+ * It centralizes public exports for easier organization.
  */
 /**
- * 布局组件
+ * Layout components
  */
 
 import CommonProTable from './CommonProTable';

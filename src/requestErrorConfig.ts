@@ -1,8 +1,9 @@
 ﻿import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
 import { message, notification } from 'antd';
+import { getErrorMessage } from './errorCodeMap';
 
-// 错误处理方案： 错误类型
+// Error presentation strategy
 enum ErrorShowType {
   SILENT = 0,
   WARN_MESSAGE = 1,
@@ -10,7 +11,7 @@ enum ErrorShowType {
   NOTIFICATION = 3,
   REDIRECT = 9,
 }
-// 与后端约定的响应数据格式
+// Response shape agreed with the backend
 interface ResponseStructure {
   success: boolean;
   data: any;
@@ -20,14 +21,14 @@ interface ResponseStructure {
 }
 
 /**
- * @name 错误处理
- * pro 自带的错误处理， 可以在这里做自己的改动
- * @doc https://umijs.org/docs/max/request#配置
+ * @name Error handling
+ * Built-in Pro request error handling, customized for this project.
+ * @doc https://umijs.org/docs/max/request#configuration
  */
 export const errorConfig: RequestConfig = {
-  // 错误处理： umi@3 的错误处理方案。
+  // Error handling based on the umi@3 request pattern.
   errorConfig: {
-    // 错误抛出
+    // Throw business errors
     errorThrower: (res) => {
       const { success, data, errorCode, errorMessage, showType } =
         res as unknown as ResponseStructure;
@@ -35,30 +36,31 @@ export const errorConfig: RequestConfig = {
         const error: any = new Error(errorMessage);
         error.name = 'BizError';
         error.info = { errorCode, errorMessage, showType, data };
-        throw error; // 抛出自制的错误
+        throw error; // Throw a custom business error
       }
     },
-    // 错误接收及处理
+    // Handle received errors
     errorHandler: (error: any, opts: any) => {
       if (opts?.skipErrorHandler) throw error;
-      // 我们的 errorThrower 抛出的错误。
+      // Errors thrown by errorThrower.
       if (error.name === 'BizError') {
         const errorInfo: ResponseStructure | undefined = error.info;
         if (errorInfo) {
-          const { errorMessage, errorCode } = errorInfo;
+          const { errorCode } = errorInfo;
+          const displayMessage = getErrorMessage(errorInfo.errorMessage || '');
           switch (errorInfo.showType) {
             case ErrorShowType.SILENT:
               // do nothing
               break;
             case ErrorShowType.WARN_MESSAGE:
-              message.warning(errorMessage);
+              message.warning(displayMessage);
               break;
             case ErrorShowType.ERROR_MESSAGE:
-              message.error(errorMessage);
+              message.error(displayMessage);
               break;
             case ErrorShowType.NOTIFICATION:
               notification.open({
-                description: errorMessage,
+                description: displayMessage,
                 message: errorCode,
               });
               break;
@@ -66,44 +68,50 @@ export const errorConfig: RequestConfig = {
               // TODO: redirect
               break;
             default:
-              message.error(errorMessage);
+              message.error(displayMessage);
           }
         }
       } else if (error.response) {
-        // Axios 的错误
-        // 请求成功发出且服务器也响应了状态码，但状态代码超出了 2xx 的范围
+        // Axios error: request completed but returned a non-2xx status
         message.error(`Response status:${error.response.status}`);
       } else if (error.request) {
-        // 请求已经成功发起，但没有收到响应
-        // \`error.request\` 在浏览器中是 XMLHttpRequest 的实例，
-        // 而在node.js中是 http.ClientRequest 的实例
+        // Request was sent successfully but no response was received.
+        // `error.request` is an XMLHttpRequest in the browser
+        // and an http.ClientRequest in Node.js.
         message.error('None response! Please retry.');
       } else {
-        // 发送请求时出了点问题
+        // Something happened while setting up the request
         message.error('Request error, please retry.');
       }
     },
   },
 
-  // 请求拦截器
+  // Request interceptors
   requestInterceptors: [
     (config: RequestOptions) => {
-      // 拦截请求配置，进行个性化处理。
-      // 注释掉自动添加token，避免影响Mock API
+      // Intercept and customize request config.
+      // Automatic token injection is disabled to avoid affecting mock APIs.
       // const url = config?.url?.concat('?token=123');
       return { ...config };
     },
   ],
 
-  // 响应拦截器
+  // Response interceptors
   responseInterceptors: [
     (response) => {
-      // 拦截响应数据，进行个性化处理
       const { data } = response as unknown as ResponseStructure;
 
       if (data?.success === false) {
-        message.error('请求失败！');
+        message.error('Request failed!');
       }
+
+      if (data?.errorMessage) {
+        data.errorMessage = getErrorMessage(data.errorMessage);
+      }
+      if (data?.message) {
+        data.message = getErrorMessage(data.message);
+      }
+
       return response;
     },
   ],
